@@ -17,7 +17,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
-##
+#
 
 """
 vimconn implement an Abstract class for the vim connector plugins
