@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 ##
@@ -1559,6 +1559,8 @@ def test_vimconnector(args):
         import vimconn_openstack as vim
     elif args.vimtype == "openvim":
         import vimconn_openvim as vim
+    elif args.vimtype == "fos":
+        import vimconn_fos as vim
     else:
         logger.critical("vimtype '{}' not supported".format(args.vimtype))
         sys.exit(1)
@@ -1798,7 +1800,7 @@ if __name__=="__main__":
     vimconn_parser.set_defaults(func=test_vimconnector)
     # Mandatory arguments
     mandatory_arguments = vimconn_parser.add_argument_group('mandatory arguments')
-    mandatory_arguments.add_argument('--vimtype', choices=['vmware', 'aws', 'openstack', 'openvim'], required=True,
+    mandatory_arguments.add_argument('--vimtype', choices=['vmware', 'aws', 'openstack', 'openvim', 'fos'], required=True,
                                      help='Set the vimconnector type to test')
     mandatory_arguments.add_argument('-c', '--config', dest='config_param', required=True,
                                     help='Set the vimconnector specific config parameters in dictionary format')

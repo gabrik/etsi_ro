@@ -81,6 +81,7 @@ vim_module = {
     "opennebula": vimconn_opennebula,
     "openstack": vimconn_openstack,
     "vmware": vimconn_vmware,
+    "fos":vimconn_fos
 }
 
 def is_task_id(task_id):
