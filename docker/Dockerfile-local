@@ -33,6 +33,7 @@ RUN apt-get update && \
     cd src/fim_rest_api && \
     python setup.py install && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-client && \
+    pip install pyangbind && \
     mkdir -p /root/RO && \
     make -C /root/RO clean all BRANCH=master && \
     dpkg -i /root/RO/IM/deb_dist/python-pyang_*.deb && \
