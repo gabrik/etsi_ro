@@ -52,15 +52,16 @@ build: connectors prepare
 
 lib-openvim:
 	$(shell git clone https://osm.etsi.org/gerrit/osm/openvim)
-	LIB_BRANCH=$(shell git -C openvim branch -a|grep -oP 'remotes/origin/\K$(BRANCH)'); \
-	[ -z "$$LIB_BRANCH" ] && LIB_BRANCH='master'; \
-	echo "BRANCH: $(BRANCH)"; \
-	echo "LIB_OPENVIM_BRANCH: $$LIB_BRANCH"; \
-	git -C openvim checkout $$LIB_BRANCH
+	# LIB_BRANCH=$(shell git -C openvim branch -a|grep -oP 'remotes/origin/\K$(BRANCH)'); \
+	# [ -z "$$LIB_BRANCH" ] && LIB_BRANCH='master'; \
+	# echo "BRANCH: $(BRANCH)"; \
+	# echo "LIB_OPENVIM_BRANCH: $$LIB_BRANCH";
+	git -C openvim checkout $(BRANCH)
 	make -C openvim clean lite
 
 osm-im:
 	$(shell git clone https://osm.etsi.org/gerrit/osm/IM)
+	cd IM; git checkout v4.0.1
 	make -C IM clean all
 
 package: prepare
