@@ -112,7 +112,7 @@ class vimconnector():
     and all these privated methods
     """
     def __init__(self, uuid, name, tenant_id, tenant_name, url, url_admin=None, user=None, passwd=None, log_level=None,
-                 config={}, persitent_info={}):
+                 config={}, persistent_info={}):
         """Constructor of VIM
         Params:
             'uuid': id asigned to this VIM
