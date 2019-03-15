@@ -361,7 +361,8 @@ class vimconnector():
         desc = {
             'uuid':net_uuid,
             'name':net_name,
-            'net_type':'ELAN'
+            'net_type':'ELAN',
+            'is_mgmt':False
             }
         self.logger.debug('FOS NEW NET DESC: {}'.format(desc)
         self.fos_api.network.add_network(desc)
