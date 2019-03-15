@@ -764,10 +764,10 @@ class vimconnector():
         self.logger.debug('FOS FDU Descriptor: {}'.format(fdu_desc))
 
         self.fos_api.fdu.onboard(fdu_desc)
-        self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'), wait=True)
-        self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'), wait=True)
+        self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'))
+        self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid')
         if start:
-            self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'), wait=True)
+            self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
 
         self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
         return (fdu_uuid, created_items)
@@ -795,9 +795,9 @@ class vimconnector():
         """
         self.logger.debug('Args: {}'.format(locals()))
         nid =  created_items.get('node_id')
-        self.fos_api.fdu.stop(vm_id, nid, wait=True)
-        self.fos_api.fdu.clean(vm_id, nid, wait=True)
-        self.fos_api.fdu.undefine(vm_id, nid, wait=True)
+        self.fos_api.fdu.stop(vm_id, nid)
+        self.fos_api.fdu.clean(vm_id, nid)
+        self.fos_api.fdu.undefine(vm_id, nid)
         self.fos_api.fdu.offload(vm_id)
         return vm_id
 
@@ -878,41 +878,41 @@ class vimconnector():
         fdu_info = self.fos_api.fdu.instance_info(vm_id, nid)
         if "start" in action_dict:
             if fdu_info.get('status') == 'CONFIGURE':
-                self.fos_api.fdu.run(vm_id, nid, wait=True)
+                self.fos_api.fdu.run(vm_id, nid)
             elif fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid, wait=True)
+                self.fos_api.fdu.resume(vm_id, nid)
             else:
                 raise vimconn.vimconnConflictException("Cannot start from this state")
         elif "pause" in action_dict:
             if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.pause(vm_id, nid, wait=True)
+                self.fos_api.fdu.pause(vm_id, nid)
             else:
                 raise vimconn.vimconnConflictException("Cannot pause from this state")
         elif "resume" in action_dict:
             if fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid, wait=True)
+                self.fos_api.fdu.resume(vm_id, nid)
             else:
                 raise vimconn.vimconnConflictException("Cannot resume from this state")
         elif "shutoff" in action_dict or "shutdown" or "forceOff" in action_dict:
             if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid, wait=True)
+                self.fos_api.fdu.stop(vm_id, nid)
             else:
                 raise vimconn.vimconnConflictException("Cannot shutoff from this state")
         elif "terminate" in action_dict:
             if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid, wait=True)
-                self.fos_api.fdu.clean(vm_id, nid, wait=True)
-                self.fos_api.fdu.undefine(vm_id, nid, wait=True)
+                self.fos_api.fdu.stop(vm_id, nid)
+                self.fos_api.fdu.clean(vm_id, nid)
+                self.fos_api.fdu.undefine(vm_id, nid)
                 self.fos_api.fdu.offload(vm_id)
             elif fdu_info.get('status') == 'CONFIGURE':
-                self.fos_api.fdu.clean(vm_id, nid, wait=True)
-                self.fos_api.fdu.undefine(vm_id, nid, wait=True)
+                self.fos_api.fdu.clean(vm_id, nid)
+                self.fos_api.fdu.undefine(vm_id, nid)
                 self.fos_api.fdu.offload(vm_id)
             elif fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid, wait=True)
-                self.fos_api.fdu.stop(vm_id, nid, wait=True)
-                self.fos_api.fdu.clean(vm_id, nid, wait=True)
-                self.fos_api.fdu.undefine(vm_id, nid, wait=True)
+                self.fos_api.fdu.resume(vm_id, nid)
+                self.fos_api.fdu.stop(vm_id, nid)
+                self.fos_api.fdu.clean(vm_id, nid)
+                self.fos_api.fdu.undefine(vm_id, nid)
                 self.fos_api.fdu.offload(vm_id)
             else:
                 raise vimconn.vimconnConflictException("Cannot terminate from this state")
@@ -920,8 +920,8 @@ class vimconnector():
             raise vimconnNotImplemented("Rebuild not implememnted")
         elif "reboot" in action_dict:
             if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid, wait=True)
-                self.fos_api.fdu.start(vm_id, nid, wait=True)
+                self.fos_api.fdu.stop(vm_id, nid)
+                self.fos_api.fdu.start(vm_id, nid)
             else:
                 raise vimconn.vimconnConflictException("Cannot reboot from this state")
 
