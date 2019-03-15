@@ -49,6 +49,7 @@ import StringIO
 import yaml
 import sys
 import uuid
+import vimconn
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from fogfimapi import API
@@ -412,7 +413,7 @@ class vimconnector():
         self.logger.debug('Args: {}'.format(locals()))
         res = [x for x in self.get_network_list() if x.get('id') == net_id]
         if len(res) == 0:
-            raise vimconnNotFoundException("Network not found" )
+            raise vimconn.vimconnNotFoundException("Network not found" )
         return res[0]
 
     def delete_network(self, net_id):
@@ -455,7 +456,7 @@ class vimconnector():
         self.logger.debug('Args: {}'.format(locals()))
         r = self.fos_api.flavor.get(flavor_id)
         if r is None:
-            raise vimconnNotFoundException( "Flavor not found" )
+            raise vimconn.vimconnNotFoundException( "Flavor not found" )
         return {'id':r.get('uuid'), 'name':r.get('name'), 'fos':r}
 
     def get_flavor_id_from_data(self, flavor_dict):
@@ -472,7 +473,7 @@ class vimconnector():
         flvs = self.fos_api.flavor.list()
         r = [x.get('uuid') for x in flvs if (x.get('cpu_min_count') == flavor_dict.get('vcpus') and x.get('ram_size_mb') == flavor_dict.get('ram') and x.get('storage_size_gb') == flavor_dict.get('disk'))]
         if len(r) == 0:
-            raise vimconnException( "No flavor found" )
+            raise vimconn.vimconnNotFoundException ( "No flavor found" )
         return r[0]
 
     def new_flavor(self, flavor_data):
@@ -548,7 +549,7 @@ class vimconnector():
         imgs = self.fos_api.image.list()
         res = [x.get('uuid') for x in imgs if x.get('uri')==path]
         if len(res) == 0:
-            raise vimconnNotFoundException("Image with this path was not found")
+            raise vimconn.vimconnNotFoundException("Image with this path was not found")
         return res[0]
 
         #raise vimconnNotImplemented( "Should have implemented this" )
@@ -778,7 +779,7 @@ class vimconnector():
         for f in fdus:
             if f.get('uuid') == vm_id:
                 return f
-        raise vimconnNotFoundException('VM not found!')
+        raise vimconn.vimconnNotFoundException('VM not found!')
 
         #raise vimconnNotImplemented( "Should have implemented this" )
 
@@ -879,22 +880,22 @@ class vimconnector():
             elif fdu_info.get('status') == 'PAUSE':
                 self.fos_api.fdu.resume(vm_id, nid, wait=True)
             else:
-                raise vimconnConflictException("Cannot start from this state")
+                raise vimconn.vimconnConflictException("Cannot start from this state")
         elif "pause" in action_dict:
             if fdu_info.get('status') == 'RUN':
                 self.fos_api.fdu.pause(vm_id, nid, wait=True)
             else:
-                raise vimconnConflictException("Cannot pause from this state")
+                raise vimconn.vimconnConflictException("Cannot pause from this state")
         elif "resume" in action_dict:
             if fdu_info.get('status') == 'PAUSE':
                 self.fos_api.fdu.resume(vm_id, nid, wait=True)
             else:
-                raise vimconnConflictException("Cannot resume from this state")
+                raise vimconn.vimconnConflictException("Cannot resume from this state")
         elif "shutoff" in action_dict or "shutdown" or "forceOff" in action_dict:
             if fdu_info.get('status') == 'RUN':
                 self.fos_api.fdu.stop(vm_id, nid, wait=True)
             else:
-                raise vimconnConflictException("Cannot shutoff from this state")
+                raise vimconn.vimconnConflictException("Cannot shutoff from this state")
         elif "terminate" in action_dict:
             if fdu_info.get('status') == 'RUN':
                 self.fos_api.fdu.stop(vm_id, nid, wait=True)
@@ -912,7 +913,7 @@ class vimconnector():
                 self.fos_api.fdu.undefine(vm_id, nid, wait=True)
                 self.fos_api.fdu.offload(vm_id)
             else:
-                raise vimconnConflictException("Cannot terminate from this state")
+                raise vimconn.vimconnConflictException("Cannot terminate from this state")
         elif "rebuild" in action_dict:
             raise vimconnNotImplemented("Rebuild not implememnted")
         elif "reboot" in action_dict:
@@ -920,7 +921,7 @@ class vimconnector():
                 self.fos_api.fdu.stop(vm_id, nid, wait=True)
                 self.fos_api.fdu.start(vm_id, nid, wait=True)
             else:
-                raise vimconnConflictException("Cannot reboot from this state")
+                raise vimconn.vimconnConflictException("Cannot reboot from this state")
 
         #raise vimconnNotImplemented( "Should have implemented this" )
 
