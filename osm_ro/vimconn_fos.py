@@ -572,7 +572,7 @@ class vimconnector():
                 'name':i.get('name'),
                 'id':i.get('uuid'),
                 'checksum':i.get('checksum'),
-                'location':i/get('uri'),
+                'location':i.get('uri'),
                 'fos':i
             }
             r.append(img_info)
