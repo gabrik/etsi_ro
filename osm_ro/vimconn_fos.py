@@ -356,7 +356,7 @@ class vimconnector():
             'vlan': in case of a data or ptp net_type, the intended vlan tag to be used for the network
         Returns the network identifier on success or raises and exception on failure
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('FOS NEW NET Args: {}'.format(locals()))
         net_uuid = '{}'.format(uuid.uuid4())
         desc = {
             'uuid':net_uuid,
@@ -388,8 +388,8 @@ class vimconnector():
         List can be empty if no network map the filter_dict. Raise an exception only upon VIM connectivity,
             authorization, or some other unspecific error
         """
+        self.logger.debug('Args: {}'.format(locals()))
         res = []
-
         net_from_fos = self.fos_api.network.list()
         for n in net_from_fos:
             osm_net = {
@@ -717,7 +717,7 @@ class vimconnector():
         for n in self.fos_api.node.list():
             n_info = self.fos_api.node.info(n)
             n_plugs = []
-            for p in self.fos_api.node.plugins():
+            for p in self.fos_api.node.plugins(n):
                 n_plugs.append(self.fos_api.plugin.info(n,p))
 
             n_cpu_number =  len(n_info.get('cpu'))
