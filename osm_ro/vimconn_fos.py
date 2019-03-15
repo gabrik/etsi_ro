@@ -765,7 +765,7 @@ class vimconnector():
 
         self.fos_api.fdu.onboard(fdu_desc)
         self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'))
-        self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid')
+        self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'))
         if start:
             self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
 
