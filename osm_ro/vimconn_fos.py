@@ -747,16 +747,16 @@ class vimconnector():
         # NODE SELECTION
         compatible_nodes = []
         for n in nodes:
-            if fdu_desc.get('hypervisor') in n.get('hvs'):
+            if fdu_desc.get('hypervisor') in n.get('hypervisors'):
                 n_comp = n.get('computational_capabilities')
                 f_comp = fdu_desc.get('computation_requirements')
                 if f_comp.get('cpu_arch') == n_comp.get('cpu_arch'):
                     if f_comp.get('cpu_min_count') <= n_comp.get('cpu_count') and f_comp.get('ram_size_mb') <= n_comp.get('ram_size'):
-                        if f_comp.get('disk_size') <= n_comp.get('disk_size'):
+                        if f_comp.get('disk_size_gb') <= n_comp.get('disk_size'):
                             compatible_nodes.append(n)
 
         if len(compatible_nodes) == 0:
-            raise vimconnConflictException("No available nodes")
+            raise vimconn.vimconnConflictException("No available nodes")
         selected_node = random.choice(compatible_nodes)
 
         created_items.update({'fdu_id':fdu_uuid, 'node_id': selected_node.get('uuid')})
