@@ -364,7 +364,7 @@ class vimconnector():
             'net_type':'ELAN',
             'is_mgmt':False
             }
-        self.logger.debug('FOS NEW NET DESC: {}'.format(desc)
+        self.logger.debug('FOS NEW NET DESC: {}'.format(desc))
         self.fos_api.network.add_network(desc)
         return net_uuid
         # raise vimconnNotImplemented( "Should have implemented this" )
