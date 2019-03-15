@@ -26,6 +26,7 @@ prepare:
 	cp tox.ini build/
 	cp MANIFEST.in build/
 	cp requirements.txt build/
+	cp README.md README.rst
 	cp README.rst build/
 	cp setup.py build/
 	cp stdeb.cfg build/
