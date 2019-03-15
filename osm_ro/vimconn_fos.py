@@ -503,7 +503,7 @@ class vimconnector():
             'cpu_arch': self.arch,
             'cpu_min_count': flavor_data.get('vcpus'),
             'cpu_min_freq': 0.0,
-            'ram_size_gb':float(flavor_data.get('ram')),
+            'ram_size_mb':float(flavor_data.get('ram')),
             'storage_size_gb':float(flavor_data.get('disk'))
         }
         self.fos_api.flavor.add(desc)
