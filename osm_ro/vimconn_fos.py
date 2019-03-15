@@ -679,7 +679,7 @@ class vimconnector():
                 'virtual_interface':{
                     'intf_type':n.get('model','VIRTIO'),
                     'vpci':n.get('vpci','0:0:0'),
-                    'bandwidth':n.get('bw', 10)
+                    'bandwidth':int(n.get('bw', 10))
                 }
             }
             if n.get('mac_address', None) is not None:
@@ -760,6 +760,8 @@ class vimconnector():
         selected_node = random.choice(compatible_nodes)
 
         created_items.update({'fdu_id':fdu_uuid, 'node_id': selected_node.get('uuid')})
+
+        self.logger.debug('FOS FDU Descriptor: {}'.format(fdu_desc))
 
         self.fos_api.fdu.onboard(fdu_desc)
         self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'), wait=True)
