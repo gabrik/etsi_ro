@@ -472,7 +472,7 @@ class vimconnector():
         flvs = self.fos_api.flavor.list()
         r = [x.get('uuid') for x in flvs if (x.get('cpu_min_count') == flavor_dict.get('vcpus') and x.get('ram_size_mb') == flavor_dict.get('ram') and x.get('storage_size_gb') == flavor_dict.get('disk'))]
         if len(r) == 0:
-            raise vimconnNotFoundException( "No flavor found" )
+            raise vimconnException( "No flavor found" )
         return r[0]
 
     def new_flavor(self, flavor_data):
@@ -502,8 +502,8 @@ class vimconnector():
             'cpu_arch': self.arch,
             'cpu_min_count': flavor_data.get('vcpus'),
             'cpu_min_freq': 0.0,
-            'ram_size_gb':flavor_data.get('ram'),
-            'storage_size_gb':flavor_data.get('disk')
+            'ram_size_gb':float(flavor_data.get('ram')),
+            'storage_size_gb':float(flavor_data.get('disk'))
         }
         self.fos_api.flavor.add(desc)
         return flv_id
