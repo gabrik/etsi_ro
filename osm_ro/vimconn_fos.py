@@ -516,7 +516,8 @@ class vimconnector():
     def delete_flavor(self, flavor_id):
         """Deletes a tenant flavor from VIM identify by its id
         Returns the used id or raise an exception"""
-        raise vimconnNotImplemented( "Should have implemented this" )
+        self.fos_api.flavor.remove(flavor_id)
+        return flavor_id
 
     def new_image(self, image_dict):
         """ Adds a tenant image to VIM. imge_dict is a dictionary with:
