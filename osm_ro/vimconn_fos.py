@@ -422,7 +422,8 @@ class vimconnector():
         """Deletes a tenant network from VIM
         Returns the network identifier or raises an exception upon error or when network is not found
         """
-        raise vimconnNotImplemented( "Should have implemented this" )
+        self.fos_api.network.remove_network(net_id)
+        return net_id
 
     def refresh_nets_status(self, net_list):
         """Get the status of the networks
@@ -780,6 +781,7 @@ class vimconnector():
 
     def get_vminstance(self,vm_id):
         """Returns the VM instance information from VIM"""
+        self.logger.debug('FOS get_vminstance')
         self.logger.debug('Args: {}'.format(locals()))
 
         fdus = self.fos_api.fdu.list()
@@ -798,6 +800,7 @@ class vimconnector():
             action_vminstance
         :return: None or the same vm_id. Raises an exception on fail
         """
+        self.logger.debug('FOS delete_vminstance')
         self.logger.debug('Args: {}'.format(locals()))
         nid =  created_items.get('node_id')
         self.fos_api.fdu.stop(vm_id, nid)
