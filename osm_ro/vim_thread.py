@@ -99,7 +99,7 @@ class VimThreadExceptionNotFound(VimThreadException):
 
 class vim_thread(threading.Thread):
     REFRESH_BUILD = 5      # 5 seconds
-    REFRESH_ACTIVE = 60    # 1 minute
+    REFRESH_ACTIVE = 30    # 1 minute
 
     def __init__(self, task_lock, name=None, datacenter_name=None, datacenter_tenant_id=None,
                  db=None, db_lock=None, ovim=None):
