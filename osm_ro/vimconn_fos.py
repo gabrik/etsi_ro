@@ -772,7 +772,7 @@ class vimconnector():
         self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'))
         # if start:
         #     self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
-        self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid')
+        self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
 
         self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
         self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
