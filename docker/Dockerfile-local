@@ -45,7 +45,7 @@ RUN apt-get update -qq && \
     rm -rf /root/.cache && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    rm -rf /root/RO
+    make -C /root/RO clean
 
 VOLUME /var/log/osm
 
