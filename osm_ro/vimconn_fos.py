@@ -637,7 +637,7 @@ class vimconnector():
             Format is vimconnector dependent, but do not use nested dictionaries and a value of None should be the same
             as not present.
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('new_vminstance Args: {}'.format(locals()))
         fdu_uuid = '{}'.format(uuid.uuid4())
 
         flv = self.fos_api.flavor.get(flavor_id)
@@ -668,6 +668,7 @@ class vimconnector():
         intf_id = 0
         for n in net_list:
             cp_id = '{}'.format(uuid.uuid4())
+            n.update({'vim_id':cp_id})
             pair_id = n.get('net_id')
 
             cp_d = {
@@ -772,6 +773,8 @@ class vimconnector():
             self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
 
         self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
+        self.logger.debug('new_vminstance returnt: {}'.format((fdu_uuid, created_items))
+
         return (fdu_uuid, created_items)
         #raise vimconnNotImplemented( "Should have implemented this" )
 
@@ -832,7 +835,7 @@ class vimconnector():
                         vlan:             #physical VLAN used for VF
         """
         self.logger.debug('Args: {}'.format(locals()))
-
+        self.logger.debug('FOS refresh_vms_status')
         fos2osm_status = {
             'DEFINE':'OTHER',
             'CONFIGURE':'INACTIVE',
@@ -843,6 +846,7 @@ class vimconnector():
 
         r = {}
         for vm in vm_list:
+            self.logger.debug('FOS refresh_vms_status for {}'.format(vm))
             desc = self.fos_api.fdu.info(vm)
             i = {}
             nid = self.fdu_node_map.get(vm)
@@ -856,6 +860,7 @@ class vimconnector():
                 i.update({'error_msg':vm_info.get('error_code')})
             i.update({'vim_info':vm_info})
             r.update({vm:i})
+            self.logger.debug('FOS refresh_vms_status res for {} is '.format(vm, i))
         return r
 
 
