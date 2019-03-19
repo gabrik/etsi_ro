@@ -864,7 +864,8 @@ class vimconnector():
             i.update({'status':osm_status})
             if vm_info.get('status') == 'ERROR':
                 i.update({'error_msg':vm_info.get('error_code')})
-            i.update({'vim_info':vm_info})
+            i.update({'vim_info':yaml.safe_dump(vm_info)})
+            i.update({'interfaces':[]})
             r.update({vm:i})
             self.logger.debug('FOS refresh_vms_status res for {} is {}'.format(vm, i))
         self.logger.debug('FOS refresh_vms_status res is {}'.format(r))
