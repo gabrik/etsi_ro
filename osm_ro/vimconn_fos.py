@@ -860,12 +860,14 @@ class vimconnector():
 
             vm_info = self.fos_api.fdu.instance_info(vm, nid)
             osm_status = fos2osm_status.get(vm_info.get('status'))
+            self.logger.debug('FOS status is {} <-> OSM Status {}'.format(vm_info.get('status'), osm_status))
             i.update({'status':osm_status})
             if vm_info.get('status') == 'ERROR':
                 i.update({'error_msg':vm_info.get('error_code')})
             i.update({'vim_info':vm_info})
             r.update({vm:i})
-            self.logger.debug('FOS refresh_vms_status res for {} is '.format(vm, i))
+            self.logger.debug('FOS refresh_vms_status res for {} is {}'.format(vm, i))
+        self.logger.debug('FOS refresh_vms_status res is {}'.format(r))
         return r
 
 
