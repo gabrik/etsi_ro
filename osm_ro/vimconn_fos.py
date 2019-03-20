@@ -853,7 +853,7 @@ class vimconnector():
         for vm in vm_list:
             self.logger.debug('FOS refresh_vms_status for {}'.format(vm))
             desc = self.fos_api.fdu.info(vm)
-            i = {}
+            info = {}
             nid = self.fdu_node_map.get(vm)
             if nid is None:
                 raise vimconnNotFoundException('VM has no node associated!!')
@@ -861,10 +861,10 @@ class vimconnector():
             vm_info = self.fos_api.fdu.instance_info(vm, nid)
             osm_status = fos2osm_status.get(vm_info.get('status'))
             self.logger.debug('FOS status is {} <-> OSM Status {}'.format(vm_info.get('status'), osm_status))
-            i.update({'status':osm_status})
+            info.update({'status':osm_status})
             if vm_info.get('status') == 'ERROR':
-                i.update({'error_msg':vm_info.get('error_code')})
-            i.update({'vim_info':yaml.safe_dump(vm_info)})
+                info.update({'error_msg':vm_info.get('error_code')})
+            info.update({'vim_info':yaml.safe_dump(vm_info)})
             faces = []
             i = 0
             for intf_name in vm_info.get('hypervisor_info').get('network',[]):
@@ -911,9 +911,9 @@ class vimconnector():
                 #  'hwaddr': '', 'host_name': '', 'mtu': 65536, 'state': 'up', 'type': 'loopback'}
                 # }
 
-            i.update({'interfaces':faces})
-            r.update({vm:i})
-            self.logger.debug('FOS refresh_vms_status res for {} is {}'.format(vm, i))
+            info.update({'interfaces':faces})
+            r.update({vm:info})
+            self.logger.debug('FOS refresh_vms_status res for {} is {}'.format(vm, info))
         self.logger.debug('FOS refresh_vms_status res is {}'.format(r))
         return r
 
