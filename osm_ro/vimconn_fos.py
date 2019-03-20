@@ -852,6 +852,7 @@ class vimconnector():
         r = {}
         for vm in vm_list:
             self.logger.debug('FOS refresh_vms_status for {}'.format(vm))
+            self.logger.debug('FOS status info {}'.format(vm_info))
             desc = self.fos_api.fdu.info(vm)
             info = {}
             nid = self.fdu_node_map.get(vm)
@@ -876,7 +877,10 @@ class vimconnector():
                 addrs = []
                 for a in intf_info.get('addresses'):
                     addrs.append(a.get('address'))
-                face['ip_address'] = ','.join(addrs)
+                if len(addrs) >= 0:
+                    face['ip_address'] = ','.join(addrs)
+                else:
+                    face['ip_address'] = ''
                 face['pci'] = '0:0:0.0'
                 # getting net id by CP
                 try:
@@ -885,8 +889,10 @@ class vimconnector():
                     cp_info = None
                 if cp_info is not None:
                     face['vim_net_id'] = cp_info.get('pair_id','')
+                    face['vim_interface_id'] = cp_info.get('uuid')
                 else:
                     face['vim_net_id'] = ''
+                    face['vim_interface_id'] = intf_name
 
                 faces.append(face)
 
