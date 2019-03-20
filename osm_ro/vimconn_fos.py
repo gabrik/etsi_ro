@@ -852,7 +852,7 @@ class vimconnector():
         r = {}
         for vm in vm_list:
             self.logger.debug('FOS refresh_vms_status for {}'.format(vm))
-            self.logger.debug('FOS status info {}'.format(vm_info))
+
             desc = self.fos_api.fdu.info(vm)
             info = {}
             nid = self.fdu_node_map.get(vm)
@@ -861,6 +861,7 @@ class vimconnector():
 
             vm_info = self.fos_api.fdu.instance_info(vm, nid)
             osm_status = fos2osm_status.get(vm_info.get('status'))
+            self.logger.debug('FOS status info {}'.format(vm_info))
             self.logger.debug('FOS status is {} <-> OSM Status {}'.format(vm_info.get('status'), osm_status))
             info.update({'status':osm_status})
             if vm_info.get('status') == 'ERROR':
