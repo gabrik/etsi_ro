@@ -865,7 +865,53 @@ class vimconnector():
             if vm_info.get('status') == 'ERROR':
                 i.update({'error_msg':vm_info.get('error_code')})
             i.update({'vim_info':yaml.safe_dump(vm_info)})
-            i.update({'interfaces':[]})
+            faces = []
+            i = 0
+            for intf_name in vm_info.get('hypervisor_info').get('network',[]):
+                intf_info = vm_info.get('hypervisor_info').get('network').get(intf_name)
+                face = {}
+                face['compute_node'] = nid
+                face['vim_info'] = yaml.safe_dump(intf_info)
+                face['mac_address'] = intf_info.get('hwaddr')
+                addrs = []
+                for a in intf_info.get('addresses'):
+                    addrs.append(a.get('address'))
+                face['ip_address'] = ','.join(addrs)
+                face['pci'] = '0:0:0.0'
+                # getting net id by CP
+                try:
+                    cp_info = desc.get('connection_points')[i]
+                except IndexError:
+                    cp_info = None
+                if cp_info is not None:
+                    face['vim_net_id'] = cp_info.get('pair_id','')
+                else:
+                    face['vim_net_id'] = ''
+
+                faces.append(face)
+
+                #
+                # {
+                # 'eth0':
+                #  {'addresses': [
+                # {'family': 'inet', 'address': '10.87.2.233', 'netmask': '24', 'scope': 'global'},
+                #  {'family': 'inet6', 'address': 'fe80::216:3eff:febf:81e', 'netmask': '64', 'scope': 'link'}
+                # ],
+                # 'counters':
+                # {'bytes_received': 2311, 'bytes_sent': 2004, 'packets_received': 21, 'packets_sent': 16},
+                #  'hwaddr': '00:16:3e:bf:08:1e',
+                # 'host_name': 'vethVAOOT4', 'mtu': 1500, 'state': 'up', 'type': 'broadcast'},
+                # 'lo':
+                # {'addresses': [
+                # {'family': 'inet', 'address': '127.0.0.1', 'netmask': '8', 'scope': 'local'},
+                # {'family': 'inet6', 'address': '::1', 'netmask': '128', 'scope': 'local'}
+                # ],
+                # 'counters':
+                #   {'bytes_received': 0, 'bytes_sent': 0, 'packets_received': 0, 'packets_sent': 0},
+                #  'hwaddr': '', 'host_name': '', 'mtu': 65536, 'state': 'up', 'type': 'loopback'}
+                # }
+
+            i.update({'interfaces':faces})
             r.update({vm:i})
             self.logger.debug('FOS refresh_vms_status res for {} is {}'.format(vm, i))
         self.logger.debug('FOS refresh_vms_status res is {}'.format(r))
