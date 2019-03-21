@@ -16,11 +16,21 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install python-networkx && \
     DEBIAN_FRONTEND=noninteractive pip2 install untangle && \
     DEBIAN_FRONTEND=noninteractive pip2 install -e git+https://github.com/python-oca/python-oca#egg=oca && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-client
+    DEBIAN_FRONTEND=noninteractive apt-get -y install mysql-client maven default-jdk python3-pip python3-all
 
 COPY . /root/RO
 
-RUN /root/RO/scripts/install-osm-im.sh --develop && \
+RUN apt-get -y install python-requests && \
+    pip3 install pyang pyangbind && \
+    mkdir -p /root/fos && \
+    cd  /root/fos && \
+    git clone https://github.com/gabrik/fog05 && \
+    cd fog05 && \
+    git checkout 0.2-devel && \
+    cd src/fim_rest_api && \
+    python setup.py install && \
+    cd ~ && \
+    /root/RO/scripts/install-osm-im.sh --develop && \
     /root/RO/scripts/install-lib-osm-openvim.sh --develop && \
     make -C /root/RO prepare && \
     mkdir -p /var/log/osm && \
