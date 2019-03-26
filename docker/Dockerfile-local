@@ -24,10 +24,8 @@ RUN apt-get -y install python-requests && \
     pip3 install pyang pyangbind && \
     mkdir -p /root/fos && \
     cd  /root/fos && \
-    git clone https://github.com/gabrik/fog05 && \
-    cd fog05 && \
-    git checkout 0.2-devel && \
-    cd src/fim_rest_api && \
+    git clone https://github.com/eclipse/fog05 && \
+    cd fog05/src/api/python/rest_api/ && \
     python setup.py install && \
     cd ~ && \
     /root/RO/scripts/install-osm-im.sh --develop && \
