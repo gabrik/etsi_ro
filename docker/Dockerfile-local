@@ -29,10 +29,8 @@ RUN apt-get update -qq && \
     pip3 install pyang pyangbind && \
     mkdir -p /root/fos && \
     cd  /root/fos && \
-    git clone https://github.com/gabrik/fog05 && \
-    cd fog05 && \
-    git checkout 0.2-devel && \
-    cd src/fim_rest_api && \
+    git clone https://github.com/eclipse/fog05 && \
+    cd fog05/src/api/python/rest_api && \
     python setup.py install && \
     cd ~ && \
     mkdir -p /root/RO && \

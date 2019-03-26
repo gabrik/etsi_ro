@@ -52,7 +52,7 @@ import uuid
 import vimconn
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from fogfimapi import API
+from fog05rest import FIMAPI
 
 #Error variables
 HTTP_Bad_Request = 400
@@ -150,7 +150,7 @@ class vimconnector():
         if not self.url_admin:  #try to use normal url
             self.url_admin = self.url
 
-        self.fos_api = API(locator=self.url)
+        self.fos_api = FIMAPI(locator=self.url)
 
     def __getitem__(self,index):
         if index=='tenant_id':
