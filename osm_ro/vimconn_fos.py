@@ -20,98 +20,20 @@
 #
 
 """
-vimconn implement an Abstract class for the vim connector plugins
- with the definition of the method to be implemented.
+Eclipse fog05 connector, implements methods to interact with fog05 using REST Client + REST Proxy
 
-
-OSM VM:
-
-./vm_manager.py define -b ubuntu16 --cpu 4 --ram 16384 --size 80 --name osmr4 --ssh-key ~/.ssh/id_rsa.pub --sriov 19:10:7
-10.100.1.202
-
-
-OSM RO docker
-
-"CMD": ["/bin/sh", "-c", "#(nop) ", "CMD [\"/bin/sh\" \"-c\" \"/bin/RO/start.sh\"]"
-
-'CMD": ["/bin/sh", "-c", "#(nop) ", "CMD [\"/bin/sh\" \"-c\" \"/bin/RO/start.sh\"]'
-
+Manages LXD containers by default, currently missing EPA and VF/PF
 
 """
 __author__="Gabriele Baldoni"
-__date__ ="$11-mar-2019 12:00:00$"
+__date__ ="$29-mar-2019 10:37:04$"
 
-import logging
-import random
-import paramiko
-import socket
-import StringIO
-import yaml
-import sys
 import uuid
 import vimconn
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from fog05rest import FIMAPI
 
-#Error variables
-HTTP_Bad_Request = 400
-HTTP_Unauthorized = 401
-HTTP_Not_Found = 404
-HTTP_Method_Not_Allowed = 405
-HTTP_Request_Timeout = 408
-HTTP_Conflict = 409
-HTTP_Not_Implemented = 501
-HTTP_Service_Unavailable = 503
-HTTP_Internal_Server_Error = 500
 
-class vimconnException(Exception):
-    """Common and base class Exception for all vimconnector exceptions"""
-    def __init__(self, message, http_code=HTTP_Bad_Request):
-        Exception.__init__(self, message)
-        self.http_code = http_code
-
-class vimconnConnectionException(vimconnException):
-    """Connectivity error with the VIM"""
-    def __init__(self, message, http_code=HTTP_Service_Unavailable):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnUnexpectedResponse(vimconnException):
-    """Get an wrong response from VIM"""
-    def __init__(self, message, http_code=HTTP_Service_Unavailable):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnAuthException(vimconnException):
-    """Invalid credentials or authorization to perform this action over the VIM"""
-    def __init__(self, message, http_code=HTTP_Unauthorized):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnNotFoundException(vimconnException):
-    """The item is not found at VIM"""
-    def __init__(self, message, http_code=HTTP_Not_Found):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnConflictException(vimconnException):
-    """There is a conflict, e.g. more item found than one"""
-    def __init__(self, message, http_code=HTTP_Conflict):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnNotSupportedException(vimconnException):
-    """The request is not supported by connector"""
-    def __init__(self, message, http_code=HTTP_Service_Unavailable):
-        vimconnException.__init__(self, message, http_code)
-
-class vimconnNotImplemented(vimconnException):
-    """The method is not implemented by the connected"""
-    def __init__(self, message, http_code=HTTP_Not_Implemented):
-        vimconnException.__init__(self, message, http_code)
-
-
-class vimconnector():
-    """Abstract base class for all the VIM connector plugins
-    These plugins must implement a vimconnector class derived from this
-    and all these privated methods
-    """
+class vimconnector(vimconn.vimconnector):
     def __init__(self, uuid, name, tenant_id, tenant_name, url, url_admin=None, user=None, passwd=None, log_level=None,
                  config={}, persistent_info={}):
         """Constructor of VIM
@@ -131,183 +53,24 @@ class vimconnector():
         Returns: Raise an exception is some needed parameter is missing, but it must not do any connectivity
             check against the VIM
         """
-        self.id        = uuid
-        self.name      = name
-        self.url       = url
-        self.url_admin = url_admin
-        self.tenant_id = tenant_id
-        self.tenant_name = tenant_name
-        self.user      = user
-        self.passwd    = passwd
-        self.config    = config
-        self.availability_zone = None
+
+        vimconn.vimconnector.__init__(self, uuid, name, tenant_id, tenant_name, url, url_admin, user, passwd, log_level,
+                                      config, persistent_info)
+
         self.arch = config.get('arch', 'x86_64')
         self.hv = config.get('hypervisor', 'LXD')
         self.fdu_node_map = {}
-        self.logger = logging.getLogger('openmano.vim')
-        if log_level:
-            self.logger.setLevel( getattr(logging, log_level) )
-        if not self.url_admin:  #try to use normal url
-            self.url_admin = self.url
-
         self.fos_api = FIMAPI(locator=self.url)
-
-    def __getitem__(self,index):
-        if index=='tenant_id':
-            return self.tenant_id
-        if index=='tenant_name':
-            return self.tenant_name
-        elif index=='id':
-            return self.id
-        elif index=='name':
-            return self.name
-        elif index=='user':
-            return self.user
-        elif index=='passwd':
-            return self.passwd
-        elif index=='url':
-            return self.url
-        elif index=='url_admin':
-            return self.url_admin
-        elif index=="config":
-            return self.config
-        else:
-            raise KeyError("Invalid key '%s'" %str(index))
-
-    def __setitem__(self,index, value):
-        if index=='tenant_id':
-            self.tenant_id = value
-        if index=='tenant_name':
-            self.tenant_name = value
-        elif index=='id':
-            self.id = value
-        elif index=='name':
-            self.name = value
-        elif index=='user':
-            self.user = value
-        elif index=='passwd':
-            self.passwd = value
-        elif index=='url':
-            self.url = value
-        elif index=='url_admin':
-            self.url_admin = value
-        else:
-            raise KeyError("Invalid key '%s'" %str(index))
-
-    @staticmethod
-    def _create_mimemultipart(content_list):
-        """Creates a MIMEmultipart text combining the content_list
-        :param content_list: list of text scripts to be combined
-        :return: str of the created MIMEmultipart. If the list is empty returns None, if the list contains only one
-        element MIMEmultipart is not created and this content is returned
-        """
-        if not content_list:
-            return None
-        elif len(content_list) == 1:
-            return content_list[0]
-        combined_message = MIMEMultipart()
-        for content in content_list:
-            if content.startswith('#include'):
-                format = 'text/x-include-url'
-            elif content.startswith('#include-once'):
-                format = 'text/x-include-once-url'
-            elif content.startswith('#!'):
-                format = 'text/x-shellscript'
-            elif content.startswith('#cloud-config'):
-                format = 'text/cloud-config'
-            elif content.startswith('#cloud-config-archive'):
-                format = 'text/cloud-config-archive'
-            elif content.startswith('#upstart-job'):
-                format = 'text/upstart-job'
-            elif content.startswith('#part-handler'):
-                format = 'text/part-handler'
-            elif content.startswith('#cloud-boothook'):
-                format = 'text/cloud-boothook'
-            else:  # by default
-                format = 'text/x-shellscript'
-            sub_message = MIMEText(content, format, sys.getdefaultencoding())
-            combined_message.attach(sub_message)
-        return combined_message.as_string()
-
-    def _create_user_data(self, cloud_config):
-        """
-        Creates a script user database on cloud_config info
-        :param cloud_config: dictionary with
-            'key-pairs': (optional) list of strings with the public key to be inserted to the default user
-            'users': (optional) list of users to be inserted, each item is a dict with:
-                'name': (mandatory) user name,
-                'key-pairs': (optional) list of strings with the public key to be inserted to the user
-            'user-data': (optional) can be a string with the text script to be passed directly to cloud-init,
-                or a list of strings, each one contains a script to be passed, usually with a MIMEmultipart file
-            'config-files': (optional). List of files to be transferred. Each item is a dict with:
-                'dest': (mandatory) string with the destination absolute path
-                'encoding': (optional, by default text). Can be one of:
-                    'b64', 'base64', 'gz', 'gz+b64', 'gz+base64', 'gzip+b64', 'gzip+base64'
-                'content' (mandatory): string with the content of the file
-                'permissions': (optional) string with file permissions, typically octal notation '0644'
-                'owner': (optional) file owner, string with the format 'owner:group'
-            'boot-data-drive': boolean to indicate if user-data must be passed using a boot drive (hard disk)
-        :return: config_drive, userdata. The first is a boolean or None, the second a string or None
-        """
-        config_drive = None
-        userdata = None
-        userdata_list = []
-        if isinstance(cloud_config, dict):
-            if cloud_config.get("user-data"):
-                if isinstance(cloud_config["user-data"], str):
-                    userdata_list.append(cloud_config["user-data"])
-                else:
-                    for u in cloud_config["user-data"]:
-                        userdata_list.append(u)
-            if cloud_config.get("boot-data-drive") != None:
-                config_drive = cloud_config["boot-data-drive"]
-            if cloud_config.get("config-files") or cloud_config.get("users") or cloud_config.get("key-pairs"):
-                userdata_dict = {}
-                # default user
-                if cloud_config.get("key-pairs"):
-                    userdata_dict["ssh-authorized-keys"] = cloud_config["key-pairs"]
-                    userdata_dict["users"] = [{"default": None, "ssh-authorized-keys": cloud_config["key-pairs"]}]
-                if cloud_config.get("users"):
-                    if "users" not in userdata_dict:
-                        userdata_dict["users"] = ["default"]
-                    for user in cloud_config["users"]:
-                        user_info = {
-                            "name": user["name"],
-                            "sudo": "ALL = (ALL)NOPASSWD:ALL"
-                        }
-                        if "user-info" in user:
-                            user_info["gecos"] = user["user-info"]
-                        if user.get("key-pairs"):
-                            user_info["ssh-authorized-keys"] = user["key-pairs"]
-                        userdata_dict["users"].append(user_info)
-
-                if cloud_config.get("config-files"):
-                    userdata_dict["write_files"] = []
-                    for file in cloud_config["config-files"]:
-                        file_info = {
-                            "path": file["dest"],
-                            "content": file["content"]
-                        }
-                        if file.get("encoding"):
-                            file_info["encoding"] = file["encoding"]
-                        if file.get("permissions"):
-                            file_info["permissions"] = file["permissions"]
-                        if file.get("owner"):
-                            file_info["owner"] = file["owner"]
-                        userdata_dict["write_files"].append(file_info)
-                userdata_list.append("#cloud-config\n" + yaml.safe_dump(userdata_dict, indent=4,
-                                                                        default_flow_style=False))
-            userdata = self._create_mimemultipart(userdata_list)
-            self.logger.debug("userdata: %s", userdata)
-        elif isinstance(cloud_config, str):
-            userdata = cloud_config
-        return config_drive, userdata
 
     def check_vim_connectivity(self):
         """Checks VIM can be reached and user credentials are ok.
         Returns None if success or raised vimconnConnectionException, vimconnAuthException, ...
         """
-        return None
+        try:
+            self.fos_api.check()
+            return None
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         #raise vimconnNotImplemented( "Should have implemented this" )
 
     def new_tenant(self,tenant_name,tenant_description):
@@ -365,9 +128,11 @@ class vimconnector():
             'is_mgmt':False
             }
         self.logger.debug('FOS NEW NET DESC: {}'.format(desc))
-        self.fos_api.network.add_network(desc)
+        try:
+            self.fos_api.network.add_network(desc)
+        except:
+            raise vimconn.vimconnConflictException("Unable to create network")
         return net_uuid
-        # raise vimconnNotImplemented( "Should have implemented this" )
 
     def get_network_list(self, filter_dict={}):
         """Obtain tenant networks of VIM
@@ -392,8 +157,26 @@ class vimconnector():
         """
         self.logger.debug('Args: {}'.format(locals()))
         res = []
-        net_from_fos = self.fos_api.network.list()
-        for n in net_from_fos:
+        try:
+            net_from_fos = self.fos_api.network.list()
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
+
+        # TODO removing entries that cannot be matched
+        if filter_dict.get('id') is not None:
+            filter_dict.update({'uuid':ilter_dict.get('id')})
+            filter_dict.pop('id')
+        if filter_dict.get('shared') is not None:
+            filter_dict.pop('shared')
+        if filter_dict.get('tenant_id') is not None:
+            filter_dict.pop('tenant_id')
+        if filter_dict.get('admin_state_up') is not None:
+            filter_dict.pop('admin_state_up')
+        if filter_dict.get('status') is not None:
+            filter_dict.pop('status')
+
+        r1 = [x for x in nets if not filter_dict.items() - x.items()]
+        for n in r1:
             osm_net = {
                 'id':n.get('uuid'),
                 'name':n.get('name'),
@@ -422,7 +205,10 @@ class vimconnector():
         """Deletes a tenant network from VIM
         Returns the network identifier or raises an exception upon error or when network is not found
         """
-        self.fos_api.network.remove_network(net_id)
+        try:
+            self.fos_api.network.remove_network(net_id)
+        except:
+            raise vimconn.vimconnNotFoundException("Network not found at VIM")
         return net_id
 
     def refresh_nets_status(self, net_list):
@@ -457,7 +243,10 @@ class vimconnector():
         Raises an exception upon error or if not found
         """
         self.logger.debug('Args: {}'.format(locals()))
-        r = self.fos_api.flavor.get(flavor_id)
+        try:
+            r = self.fos_api.flavor.get(flavor_id)
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         if r is None:
             raise vimconn.vimconnNotFoundException( "Flavor not found" )
         return {'id':r.get('uuid'), 'name':r.get('name'), 'fos':r}
@@ -473,7 +262,11 @@ class vimconnector():
         Returns the flavor_id or raises a vimconnNotFoundException
         """
         self.logger.debug('Args: {}'.format(locals()))
-        flvs = self.fos_api.flavor.list()
+
+        try:
+            flvs = self.fos_api.flavor.list()
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         r = [x.get('uuid') for x in flvs if (x.get('cpu_min_count') == flavor_dict.get('vcpus') and x.get('ram_size_mb') == flavor_dict.get('ram') and x.get('storage_size_gb') == flavor_dict.get('disk'))]
         if len(r) == 0:
             raise vimconn.vimconnNotFoundException ( "No flavor found" )
@@ -509,14 +302,20 @@ class vimconnector():
             'ram_size_mb':float(flavor_data.get('ram')),
             'storage_size_gb':float(flavor_data.get('disk'))
         }
-        self.fos_api.flavor.add(desc)
+        try:
+            self.fos_api.flavor.add(desc)
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         return flv_id
 
 
     def delete_flavor(self, flavor_id):
         """Deletes a tenant flavor from VIM identify by its id
         Returns the used id or raise an exception"""
-        self.fos_api.flavor.remove(flavor_id)
+        try:
+            self.fos_api.flavor.remove(flavor_id)
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         return flavor_id
 
     def new_image(self, image_dict):
@@ -535,9 +334,11 @@ class vimconnector():
             'uuid':img_id,
             'uri':image_dict.get('location')
         }
-        self.fos_api.image.add(desc)
+        try:
+            self.fos_api.image.add(desc)
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         return img_id
-        #raise vimconnNotImplemented( "Should have implemented this" )
 
     def delete_image(self, image_id):
         """Deletes a tenant image from VIM
@@ -550,7 +351,10 @@ class vimconnector():
            Returns the image_id or raises a vimconnNotFoundException
         """
         self.logger.debug('Args: {}'.format(locals()))
-        imgs = self.fos_api.image.list()
+        try:
+            imgs = self.fos_api.image.list()
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         res = [x.get('uuid') for x in imgs if x.get('uri')==path]
         if len(res) == 0:
             raise vimconn.vimconnNotFoundException("Image with this path was not found")
@@ -571,8 +375,21 @@ class vimconnector():
         """
         self.logger.debug('Args: {}'.format(locals()))
         r = []
-        fimgs = self.fos_api.image.list()
-        for i in fimgs:
+        try:
+            fimgs = self.fos_api.image.list()
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
+
+        # TODO removing entries that cannot be matched
+        if filter_dict.get('id') is not None:
+            filter_dict.update({'uuid':ilter_dict.get('id')})
+            filter_dict.pop('id')
+        if filter_dict.get('location') is not None:
+            filter_dict.pop('uri')
+
+        r1 = [x for x in fimgs if not filter_dict.items() - x.items()]
+
+        for i in r1:
             img_info = {
                 'name':i.get('name'),
                 'id':i.get('uuid'),
@@ -642,9 +459,16 @@ class vimconnector():
         self.logger.debug('new_vminstance Args: {}'.format(locals()))
         fdu_uuid = '{}'.format(uuid.uuid4())
 
-        flv = self.fos_api.flavor.get(flavor_id)
-        img =  self.fos_api.image.get(image_id)
+        try:
+            flv = self.fos_api.flavor.get(flavor_id)
+            img = self.fos_api.image.get(image_id)
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
 
+        if flv is None:
+            raise vimconn.vimconnNotFoundException("Flavor not found!")
+        if img is None:
+            raise vimconn.vimconnNotFoundException("Image not found")
 
         created_items = {
             'fdu_id':'',
@@ -768,16 +592,18 @@ class vimconnector():
 
         self.logger.debug('FOS FDU Descriptor: {}'.format(fdu_desc))
 
-        self.fos_api.fdu.onboard(fdu_desc)
-        self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'))
-        self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'))
-        # if start:
-        #     self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
-        self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
+        try:
+            self.fos_api.fdu.onboard(fdu_desc)
+            self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'))
+            self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'))
+            # if start:
+            #     self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
+            self.fos_api.fdu.run(fdu_uuid, selected_node.get('uuid'))
 
-        self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
-        self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
-
+            self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
+            self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
+        except:
+            vimconn.vimconnException("Instantiation Failed")
         return (fdu_uuid, created_items)
         #raise vimconnNotImplemented( "Should have implemented this" )
 
@@ -786,7 +612,10 @@ class vimconnector():
         self.logger.debug('FOS get_vminstance')
         self.logger.debug('Args: {}'.format(locals()))
 
-        fdus = self.fos_api.fdu.list()
+        try:
+            fdus = self.fos_api.fdu.list()
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
         for f in fdus:
             if f.get('uuid') == vm_id:
                 return f
@@ -805,10 +634,13 @@ class vimconnector():
         self.logger.debug('FOS delete_vminstance')
         self.logger.debug('Args: {}'.format(locals()))
         nid =  created_items.get('node_id')
-        self.fos_api.fdu.stop(vm_id, nid)
-        self.fos_api.fdu.clean(vm_id, nid)
-        self.fos_api.fdu.undefine(vm_id, nid)
-        self.fos_api.fdu.offload(vm_id)
+        try:
+            self.fos_api.fdu.stop(vm_id, nid)
+            self.fos_api.fdu.clean(vm_id, nid)
+            self.fos_api.fdu.undefine(vm_id, nid)
+            self.fos_api.fdu.offload(vm_id)
+        except:
+            raise vimconn.vimconnException("Delete error!")
         return vm_id
 
         #raise vimconnNotImplemented( "Should have implemented this" )
@@ -850,16 +682,28 @@ class vimconnector():
         }
 
         r = {}
+
         for vm in vm_list:
             self.logger.debug('FOS refresh_vms_status for {}'.format(vm))
 
-            desc = self.fos_api.fdu.info(vm)
+            try:
+                desc = self.fos_api.fdu.info(vm)
+            except:
+                raise vimconn.vimconnConnectionException("VIM not reachable")
+            if desc is None:
+                raise vimconn.vimconnNotFoundException("Not found at VIM")
             info = {}
             nid = self.fdu_node_map.get(vm)
             if nid is None:
                 raise vimconnNotFoundException('VM has no node associated!!')
 
-            vm_info = self.fos_api.fdu.instance_info(vm, nid)
+            try:
+                vm_info = self.fos_api.fdu.instance_info(vm, nid)
+            except:
+                raise vimconn.vimconnConnectionException("VIM not reachable")
+            if vm_info is None:
+                raise vimconn.vimconnNotFoundException("Not found at VIM")
+
             osm_status = fos2osm_status.get(vm_info.get('status'))
             self.logger.debug('FOS status info {}'.format(vm_info))
             self.logger.debug('FOS status is {} <-> OSM Status {}'.format(vm_info.get('status'), osm_status))
@@ -897,26 +741,6 @@ class vimconnector():
 
                 faces.append(face)
 
-                #
-                # {
-                # 'eth0':
-                #  {'addresses': [
-                # {'family': 'inet', 'address': '10.87.2.233', 'netmask': '24', 'scope': 'global'},
-                #  {'family': 'inet6', 'address': 'fe80::216:3eff:febf:81e', 'netmask': '64', 'scope': 'link'}
-                # ],
-                # 'counters':
-                # {'bytes_received': 2311, 'bytes_sent': 2004, 'packets_received': 21, 'packets_sent': 16},
-                #  'hwaddr': '00:16:3e:bf:08:1e',
-                # 'host_name': 'vethVAOOT4', 'mtu': 1500, 'state': 'up', 'type': 'broadcast'},
-                # 'lo':
-                # {'addresses': [
-                # {'family': 'inet', 'address': '127.0.0.1', 'netmask': '8', 'scope': 'local'},
-                # {'family': 'inet6', 'address': '::1', 'netmask': '128', 'scope': 'local'}
-                # ],
-                # 'counters':
-                #   {'bytes_received': 0, 'bytes_sent': 0, 'packets_received': 0, 'packets_sent': 0},
-                #  'hwaddr': '', 'host_name': '', 'mtu': 65536, 'state': 'up', 'type': 'loopback'}
-                # }
 
             info.update({'interfaces':faces})
             r.update({vm:info})
@@ -943,57 +767,58 @@ class vimconnector():
         nid = self.fdu_node_map(vm_id)
         if nid is None:
             raise vimconnNotFoundException('No node for this VM')
-        fdu_info = self.fos_api.fdu.instance_info(vm_id, nid)
-        if "start" in action_dict:
-            if fdu_info.get('status') == 'CONFIGURE':
-                self.fos_api.fdu.run(vm_id, nid)
-            elif fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid)
-            else:
-                raise vimconn.vimconnConflictException("Cannot start from this state")
-        elif "pause" in action_dict:
-            if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.pause(vm_id, nid)
-            else:
-                raise vimconn.vimconnConflictException("Cannot pause from this state")
-        elif "resume" in action_dict:
-            if fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid)
-            else:
-                raise vimconn.vimconnConflictException("Cannot resume from this state")
-        elif "shutoff" in action_dict or "shutdown" or "forceOff" in action_dict:
-            if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid)
-            else:
-                raise vimconn.vimconnConflictException("Cannot shutoff from this state")
-        elif "terminate" in action_dict:
-            if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid)
-                self.fos_api.fdu.clean(vm_id, nid)
-                self.fos_api.fdu.undefine(vm_id, nid)
-                self.fos_api.fdu.offload(vm_id)
-            elif fdu_info.get('status') == 'CONFIGURE':
-                self.fos_api.fdu.clean(vm_id, nid)
-                self.fos_api.fdu.undefine(vm_id, nid)
-                self.fos_api.fdu.offload(vm_id)
-            elif fdu_info.get('status') == 'PAUSE':
-                self.fos_api.fdu.resume(vm_id, nid)
-                self.fos_api.fdu.stop(vm_id, nid)
-                self.fos_api.fdu.clean(vm_id, nid)
-                self.fos_api.fdu.undefine(vm_id, nid)
-                self.fos_api.fdu.offload(vm_id)
-            else:
-                raise vimconn.vimconnConflictException("Cannot terminate from this state")
-        elif "rebuild" in action_dict:
-            raise vimconnNotImplemented("Rebuild not implememnted")
-        elif "reboot" in action_dict:
-            if fdu_info.get('status') == 'RUN':
-                self.fos_api.fdu.stop(vm_id, nid)
-                self.fos_api.fdu.start(vm_id, nid)
-            else:
-                raise vimconn.vimconnConflictException("Cannot reboot from this state")
-
-        #raise vimconnNotImplemented( "Should have implemented this" )
+        try:
+            fdu_info = self.fos_api.fdu.instance_info(vm_id, nid)
+            if "start" in action_dict:
+                if fdu_info.get('status') == 'CONFIGURE':
+                    self.fos_api.fdu.run(vm_id, nid)
+                elif fdu_info.get('status') == 'PAUSE':
+                    self.fos_api.fdu.resume(vm_id, nid)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot start from this state")
+            elif "pause" in action_dict:
+                if fdu_info.get('status') == 'RUN':
+                    self.fos_api.fdu.pause(vm_id, nid)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot pause from this state")
+            elif "resume" in action_dict:
+                if fdu_info.get('status') == 'PAUSE':
+                    self.fos_api.fdu.resume(vm_id, nid)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot resume from this state")
+            elif "shutoff" in action_dict or "shutdown" or "forceOff" in action_dict:
+                if fdu_info.get('status') == 'RUN':
+                    self.fos_api.fdu.stop(vm_id, nid)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot shutoff from this state")
+            elif "terminate" in action_dict:
+                if fdu_info.get('status') == 'RUN':
+                    self.fos_api.fdu.stop(vm_id, nid)
+                    self.fos_api.fdu.clean(vm_id, nid)
+                    self.fos_api.fdu.undefine(vm_id, nid)
+                    self.fos_api.fdu.offload(vm_id)
+                elif fdu_info.get('status') == 'CONFIGURE':
+                    self.fos_api.fdu.clean(vm_id, nid)
+                    self.fos_api.fdu.undefine(vm_id, nid)
+                    self.fos_api.fdu.offload(vm_id)
+                elif fdu_info.get('status') == 'PAUSE':
+                    self.fos_api.fdu.resume(vm_id, nid)
+                    self.fos_api.fdu.stop(vm_id, nid)
+                    self.fos_api.fdu.clean(vm_id, nid)
+                    self.fos_api.fdu.undefine(vm_id, nid)
+                    self.fos_api.fdu.offload(vm_id)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot terminate from this state")
+            elif "rebuild" in action_dict:
+                raise vimconnNotImplemented("Rebuild not implememnted")
+            elif "reboot" in action_dict:
+                if fdu_info.get('status') == 'RUN':
+                    self.fos_api.fdu.stop(vm_id, nid)
+                    self.fos_api.fdu.start(vm_id, nid)
+                else:
+                    raise vimconn.vimconnConflictException("Cannot reboot from this state")
+        except:
+            raise vimconn.vimconnConnectionException("VIM not reachable")
 
 
     def get_vminstance_console(self, vm_id, console_type="vnc"):
@@ -1208,92 +1033,4 @@ class vimconnector():
         Returns the sfp ID (sfp_id) or raises an exception upon error or when sf is not found
         """
         raise vimconnNotImplemented( "SFC support not implemented" )
-
-    def inject_user_key(self, ip_addr=None, user=None, key=None, ro_key=None, password=None):
-        """
-        Inject a ssh public key in a VM
-        Params:
-            ip_addr: ip address of the VM
-            user: username (default-user) to enter in the VM
-            key: public key to be injected in the VM
-            ro_key: private key of the RO, used to enter in the VM if the password is not provided
-            password: password of the user to enter in the VM
-        The function doesn't return a value:
-        """
-        if not ip_addr or not user:
-            raise vimconnNotSupportedException("All parameters should be different from 'None'")
-        elif not ro_key and not password:
-            raise vimconnNotSupportedException("All parameters should be different from 'None'")
-        else:
-            commands = {'mkdir -p ~/.ssh/', 'echo "%s" >> ~/.ssh/authorized_keys' % key,
-                        'chmod 644 ~/.ssh/authorized_keys', 'chmod 700 ~/.ssh/'}
-            client = paramiko.SSHClient()
-            try:
-                if ro_key:
-                    pkey = paramiko.RSAKey.from_private_key(StringIO.StringIO(ro_key))
-                else:
-                    pkey = None
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                client.connect(ip_addr, username=user, password=password, pkey=pkey, timeout=10)
-                for command in commands:
-                    (i, o, e) = client.exec_command(command, timeout=10)
-                    returncode = o.channel.recv_exit_status()
-                    output = o.read()
-                    outerror = e.read()
-                    if returncode != 0:
-                        text = "run_command='{}' Error='{}'".format(command, outerror)
-                        raise vimconnUnexpectedResponse("Cannot inject ssh key in VM: '{}'".format(text))
-                        return
-            except (socket.error, paramiko.AuthenticationException, paramiko.SSHException) as message:
-                raise vimconnUnexpectedResponse(
-                    "Cannot inject ssh key in VM: '{}' - {}".format(ip_addr, str(message)))
-                return
-
-
-#NOT USED METHODS in current version
-
-    def host_vim2gui(self, host, server_dict):
-        """Transform host dictionary from VIM format to GUI format,
-        and append to the server_dict
-        """
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def get_hosts_info(self):
-        """Get the information of deployed hosts
-        Returns the hosts content"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def get_hosts(self, vim_tenant):
-        """Get the hosts and deployed instances
-        Returns the hosts content"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def get_processor_rankings(self):
-        """Get the processor rankings in the VIM database"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def new_host(self, host_data):
-        """Adds a new host to VIM"""
-        """Returns status code of the VIM response"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def new_external_port(self, port_data):
-        """Adds a external port to VIM"""
-        """Returns the port identifier"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def new_external_network(self,net_name,net_type):
-        """Adds a external network to VIM (shared)"""
-        """Returns the network identifier"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def connect_port_network(self, port_id, network_id, admin=False):
-        """Connects a external port to a network"""
-        """Returns status code of the VIM response"""
-        raise vimconnNotImplemented( "Should have implemented this" )
-
-    def new_vminstancefromJSON(self, vm_data):
-        """Adds a VM instance to VIM"""
-        """Returns the instance identifier"""
-        raise vimconnNotImplemented( "Should have implemented this" )
 
