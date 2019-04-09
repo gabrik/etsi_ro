@@ -91,7 +91,7 @@ class vimconnector(vimconn.vimconnector):
     def __checksum_filter(self, desc, filter_checksum=None):
         if filter_checksum is None:
             return True
-        return desc.get('checksum') == filter_id
+        return desc.get('checksum') == filter_checksum
 
     def check_vim_connectivity(self):
         """Checks VIM can be reached and user credentials are ok.
