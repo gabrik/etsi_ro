@@ -484,138 +484,137 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('new_vminstance Args: {}'.format(locals()))
         fdu_uuid = '{}'.format(uuid.uuid4())
 
-        try:
-            flv = self.fos_api.flavor.get(flavor_id)
-            img = self.fos_api.image.get(image_id)
+        flv = self.fos_api.flavor.get(flavor_id)
+        img = self.fos_api.image.get(image_id)
 
-            if flv is None:
-                raise vimconn.vimconnNotFoundException("Flavor {} not found at VIM".format(flavor_id))
-            if img is None:
-                raise vimconn.vimconnNotFoundException("Image {} not found at VIM".format(image_id))
+        if flv is None:
+            raise vimconn.vimconnNotFoundException("Flavor {} not found at VIM".format(flavor_id))
+        if img is None:
+            raise vimconn.vimconnNotFoundException("Image {} not found at VIM".format(image_id))
 
-            created_items = {
-                'fdu_id':'',
-                'node_id':'',
-                'connection_points':[]
-                }
-
-            fdu_desc = {
-                'name':name,
-                'uuid':fdu_uuid,
-                'computation_requirements':flv,
-                'image':img,
-                'hypervisor':self.hv,
-                'migration_kind':'LIVE',
-                'interfaces':[],
-                'io_ports':[],
-                'connection_points':[],
-                'depends_on':[]
+        created_items = {
+            'fdu_id':'',
+            'node_id':'',
+            'connection_points':[]
             }
 
-            nets = []
-            cps = []
-            intf_id = 0
-            for n in net_list:
-                cp_id = '{}'.format(uuid.uuid4())
-                n.update({'vim_id':cp_id})
-                pair_id = n.get('net_id')
+        fdu_desc = {
+            'name':name,
+            'uuid':fdu_uuid,
+            'computation_requirements':flv,
+            'image':img,
+            'hypervisor':self.hv,
+            'migration_kind':'LIVE',
+            'interfaces':[],
+            'io_ports':[],
+            'connection_points':[],
+            'depends_on':[]
+        }
 
-                cp_d = {
-                    'uuid':cp_id,
-                    'pair_id':pair_id
+        nets = []
+        cps = []
+        intf_id = 0
+        for n in net_list:
+            cp_id = '{}'.format(uuid.uuid4())
+            n.update({'vim_id':cp_id})
+            pair_id = n.get('net_id')
+
+            cp_d = {
+                'uuid':cp_id,
+                'pair_id':pair_id
+            }
+            intf_d = {
+                'name':n.get('name','eth{}'.format(intf_id)),
+                'is_mgmt':False,
+                'if_type':'INTERNAL',
+                'virtual_interface':{
+                    'intf_type':n.get('model','VIRTIO'),
+                    'vpci':n.get('vpci','0:0:0'),
+                    'bandwidth':int(n.get('bw', 100))
                 }
-                intf_d = {
-                    'name':n.get('name','eth{}'.format(intf_id)),
-                    'is_mgmt':False,
-                    'if_type':'INTERNAL',
-                    'virtual_interface':{
-                        'intf_type':n.get('model','VIRTIO'),
-                        'vpci':n.get('vpci','0:0:0'),
-                        'bandwidth':int(n.get('bw', 100))
-                    }
+            }
+            if n.get('mac_address', None) is not None:
+                intf_d['mac_address'] = n['mac_address']
+
+            created_items['connection_points'].append(cp_id)
+            fdu_desc['connection_points'].append(cp_d)
+            fdu_desc['interfaces'].append(intf_d)
+
+            intf_id = intf_id + 1
+
+        if cloud_config is not None:
+            configuration = {
+                    'conf_type':'CLOUD_INIT'
                 }
-                if n.get('mac_address', None) is not None:
-                    intf_d['mac_address'] = n['mac_address']
+            if cloud_config.get('user-data') is not None:
+                configuration.update({'script':cloud_config.get('user-data')})
+            if cloud_config.get('key-pairs') is not None:
+                configuration.update({'ssh_keys':cloud_config.get('key-pairs')})
 
-                created_items['connection_points'].append(cp_id)
-                fdu_desc['connection_points'].append(cp_d)
-                fdu_desc['interfaces'].append(intf_d)
+            if 'script' in configuration:
+                fdu_desc.update({'configuration':configuration})
 
-                intf_id = intf_id + 1
+        ### NODE Selection ###
+        # Infrastructure info
+        #   nodes dict with
+        #        uuid -> node uuid
+        #        computational capabilities -> cpu, ram, and disk available
+        #        hypervisors -> list of available hypervisors (eg. KVM, LXD, BARE)
+        #
+        #
 
-            if cloud_config is not None:
-                configuration = {
-                        'conf_type':'CLOUD_INIT'
-                    }
-                if cloud_config.get('user-data') is not None:
-                    configuration.update({'script':cloud_config.get('user-data')})
-                if cloud_config.get('key-pairs') is not None:
-                    configuration.update({'ssh_keys':cloud_config.get('key-pairs')})
+        # UPDATING AVAILABLE INFRASTRUCTURE
+        nodes = []
+        for n in self.fos_api.node.list():
+            n_info = self.fos_api.node.info(n)
+            n_plugs = []
+            for p in self.fos_api.node.plugins(n):
+                n_plugs.append(self.fos_api.plugin.info(n,p))
 
-                if 'script' in configuration:
-                    fdu_desc.update({'configuration':configuration})
+            n_cpu_number =  len(n_info.get('cpu'))
+            n_cpu_arch = n_info.get('cpu')[0].get('arch')
+            n_cpu_freq = n_info.get('cpu')[0].get('frequency')
+            n_ram = n_info.get('ram').get('size')
+            n_disk_size = sorted(list(filter(lambda x: 'sda' in x['local_address'], n_info.get('disks'))), key= lambda k: k['dimension'])[-1].get('dimension')
 
-            ### NODE Selection ###
-            # Infrastructure info
-            #   nodes dict with
-            #        uuid -> node uuid
-            #        computational capabilities -> cpu, ram, and disk available
-            #        hypervisors -> list of available hypervisors (eg. KVM, LXD, BARE)
-            #
-            #
+            hvs = []
+            for p in n_plugs:
+                if p.get('type') == 'runtime':
+                    hvs.append(p.get('name'))
 
-            # UPDATING AVAILABLE INFRASTRUCTURE
-            nodes = []
-            for n in self.fos_api.node.list():
-                n_info = self.fos_api.node.info(n)
-                n_plugs = []
-                for p in self.fos_api.node.plugins(n):
-                    n_plugs.append(self.fos_api.plugin.info(n,p))
+            ni = {
+                'uuid':n,
+                'computational_capabilities':{
+                    'cpu_count':n_cpu_number,
+                    'cpu_arch':n_cpu_arch,
+                    'cpu_freq':n_cpu_freq,
+                    'ram_size':n_ram,
+                    'disk_size':n_disk_size
+                },
+                'hypervisors':hvs
+            }
+            nodes.append(ni)
 
-                n_cpu_number =  len(n_info.get('cpu'))
-                n_cpu_arch = n_info.get('cpu')[0].get('arch')
-                n_cpu_freq = n_info.get('cpu')[0].get('frequency')
-                n_ram = n_info.get('ram').get('size')
-                n_disk_size = sorted(list(filter(lambda x: 'sda' in x['local_address'], n_info.get('disks'))), key= lambda k: k['dimension'])[-1].get('dimension')
+        # NODE SELECTION
+        compatible_nodes = []
+        for n in nodes:
+            if fdu_desc.get('hypervisor') in n.get('hypervisors'):
+                n_comp = n.get('computational_capabilities')
+                f_comp = fdu_desc.get('computation_requirements')
+                if f_comp.get('cpu_arch') == n_comp.get('cpu_arch'):
+                    if f_comp.get('cpu_min_count') <= n_comp.get('cpu_count') and f_comp.get('ram_size_mb') <= n_comp.get('ram_size'):
+                        if f_comp.get('disk_size_gb') <= n_comp.get('disk_size'):
+                            compatible_nodes.append(n)
 
-                hvs = []
-                for p in n_plugs:
-                    if p.get('type') == 'runtime':
-                        hvs.append(p.get('name'))
+        if len(compatible_nodes) == 0:
+            raise vimconn.vimconnConflictException("No available nodes at VIM")
+        selected_node = random.choice(compatible_nodes)
 
-                ni = {
-                    'uuid':n,
-                    'computational_capabilities':{
-                        'cpu_count':n_cpu_number,
-                        'cpu_arch':n_cpu_arch,
-                        'cpu_freq':n_cpu_freq,
-                        'ram_size':n_ram,
-                        'disk_size':n_disk_size
-                    },
-                    'hypervisors':hvs
-                }
-                nodes.append(ni)
+        created_items.update({'fdu_id':fdu_uuid, 'node_id': selected_node.get('uuid')})
 
-            # NODE SELECTION
-            compatible_nodes = []
-            for n in nodes:
-                if fdu_desc.get('hypervisor') in n.get('hypervisors'):
-                    n_comp = n.get('computational_capabilities')
-                    f_comp = fdu_desc.get('computation_requirements')
-                    if f_comp.get('cpu_arch') == n_comp.get('cpu_arch'):
-                        if f_comp.get('cpu_min_count') <= n_comp.get('cpu_count') and f_comp.get('ram_size_mb') <= n_comp.get('ram_size'):
-                            if f_comp.get('disk_size_gb') <= n_comp.get('disk_size'):
-                                compatible_nodes.append(n)
+        self.logger.debug('FOS Node {} FDU Descriptor: {}'.format(selected_node.get('uuid'), fdu_desc))
 
-            if len(compatible_nodes) == 0:
-                raise vimconn.vimconnConflictException("No available nodes at VIM")
-            selected_node = random.choice(compatible_nodes)
-
-            created_items.update({'fdu_id':fdu_uuid, 'node_id': selected_node.get('uuid')})
-
-            self.logger.debug('FOS Node {} FDU Descriptor: {}'.format(selected_node.get('uuid'), fdu_desc))
-
-
+        try:
             self.fos_api.fdu.onboard(fdu_desc)
             self.fos_api.fdu.define(fdu_uuid, selected_node.get('uuid'))
             self.fos_api.fdu.configure(fdu_uuid, selected_node.get('uuid'))
@@ -627,7 +626,7 @@ class vimconnector(vimconn.vimconnector):
             self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
             return (fdu_uuid, created_items)
         except:
-            vimconn.vimconnException("Instantiation Failed")
+            raise vimconnException("Error while instantiating VM {}".format(name))
 
 
     def get_vminstance(self,vm_id):
