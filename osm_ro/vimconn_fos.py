@@ -37,8 +37,9 @@ __date__ ="$09-apr-2019 10:35:12$"
 import uuid
 import socket
 import struct
-from functools import partial
 import vimconn
+import random
+from functools import partial
 from fog05rest import FIMAPI
 
 
@@ -481,7 +482,7 @@ class vimconnector(vimconn.vimconnector):
             Format is vimconnector dependent, but do not use nested dictionaries and a value of None should be the same
             as not present.
         """
-        self.logger.debug('new_vminstance Args: {}'.format(locals()))
+        self.logger.debug('new_vminstance with rgs: {}'.format(locals()))
         fdu_uuid = '{}'.format(uuid.uuid4())
 
         flv = self.fos_api.flavor.get(flavor_id)
