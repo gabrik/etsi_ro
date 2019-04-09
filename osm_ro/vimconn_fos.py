@@ -128,7 +128,7 @@ class vimconnector(vimconn.vimconnector):
         """
 
         if net_type in ['data','ptp']:
-            raise vimconnNotImplemented('{} type of network not supported'.format(net_type))
+            raise vimconn.vimconnNotImplemented('{} type of network not supported'.format(net_type))
 
         net_uuid = '{}'.format(uuid.uuid4())
         desc = {
@@ -139,6 +139,7 @@ class vimconnector(vimconn.vimconnector):
             }
 
         if ip_profile is not None:
+            ip = {}
             if ip_profile.get('ip_version') == 'IPv4':
                 ip_info = {}
                 ip_range = self.__get_ip_range(ip_profile.get('dhcp_start_address'), ip_profile.get('dhcp_count'))
@@ -150,12 +151,13 @@ class vimconnector(vimconn.vimconnector):
                 ip.update({'gateway':ip_profile.get('gateway_address', None)})
                 desc.update({'ip_configuration':ip_info})
             else:
-                raise vimconnNotImplemented('IPV6 network is not implemented at VIM')
-        self.logger.debug('new_network Args: {} - Generated Eclipse fog05 Descriptor'.format(locals(), desc))
+                raise vimconn.vimconnNotImplemented('IPV6 network is not implemented at VIM')
+            desc.update({'ip_configuration':ip})
+        self.logger.debug('new_network Args: {} - Generated Eclipse fog05 Descriptor {}'.format(locals(), desc))
         try:
             self.fos_api.network.add_network(desc)
         except:
-            raise vimconnException("Unable to create network {}, VIM Error".format(net_name))
+            raise vimconn.vimconnException("Unable to create network {}, VIM Error".format(net_name))
             # No way from the current rest service to get the actual error, most likely it will be an already existing error
         return net_uuid
 
@@ -628,7 +630,7 @@ class vimconnector(vimconn.vimconnector):
             self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
             return (fdu_uuid, created_items)
         except:
-            raise vimconnException("Error while instantiating VM {}".format(name))
+            raise vimconn.vimconnException("Error while instantiating VM {}".format(name))
 
 
     def get_vminstance(self,vm_id):
@@ -802,9 +804,9 @@ class vimconnector(vimconn.vimconnector):
         :return: None, or a console dict
         """
         self.logger.debug('Args: {}'.format(locals()))
-        nid = self.fdu_node_map(vm_id)
+        nid = self.fdu_node_map.get(vm_id)
         if nid is None:
-            raise vimconnNotFoundException('No node for this VM')
+            raise vimconn.vimconnNotFoundException('No node for this VM')
         try:
             fdu_info = self.fos_api.fdu.instance_info(vm_id, nid)
             if "start" in action_dict:
