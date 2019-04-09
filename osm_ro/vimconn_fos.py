@@ -538,7 +538,7 @@ class vimconnector(vimconn.vimconnector):
                     intf_d['mac_address'] = n['mac_address']
 
                 created_items['connection_points'].append(cp_id)
-                fdu_desc.get['connection_points'.append(cp_d)
+                fdu_desc['connection_points'].append(cp_d)
                 fdu_desc['interfaces'].append(intf_d)
 
                 intf_id = intf_id + 1
