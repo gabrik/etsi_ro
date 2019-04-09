@@ -399,7 +399,7 @@ class vimconnector(vimconn.vimconnector):
         except:
             raise vimconn.vimconnConnectionException("VIM not reachable")
 
-         filters = [
+        filters = [
             partial(self.__name_filter, filter_name=filter_dict.get('name')),
             partial(self.__id_filter,filter_id=filter_dict.get('id')),
             partial(self.__checksum_filter,filter_checksum=filter_dict.get('checksum'))
