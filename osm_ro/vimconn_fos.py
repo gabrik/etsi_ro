@@ -625,9 +625,9 @@ class vimconnector(vimconn.vimconnector):
 
             self.fdu_node_map.update({fdu_uuid: selected_node.get('uuid')})
             self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
+            return (fdu_uuid, created_items)
         except:
             vimconn.vimconnException("Instantiation Failed")
-        return (fdu_uuid, created_items)
 
 
     def get_vminstance(self,vm_id):
