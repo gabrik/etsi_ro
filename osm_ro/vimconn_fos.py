@@ -613,7 +613,7 @@ class vimconnector(vimconn.vimconnector):
 
             created_items.update({'fdu_id':fdu_uuid, 'node_id': selected_node.get('uuid')})
 
-            self.logger.debug('FOS FDU Descriptor: {}'.format(fdu_desc))
+            self.logger.debug('FOS Node {} FDU Descriptor: {}'.format(selected_node.get('uuid'), fdu_desc))
 
 
             self.fos_api.fdu.onboard(fdu_desc)
