@@ -39,6 +39,7 @@ import socket
 import struct
 import vimconn
 import random
+import yaml
 from functools import partial
 from fog05rest import FIMAPI
 
