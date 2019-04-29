@@ -153,7 +153,7 @@ class vimconnector(vimconn.vimconnector):
             else:
                 raise vimconn.vimconnNotImplemented('IPV6 network is not implemented at VIM')
             desc.update({'ip_configuration':ip})
-        self.logger.debug('new_network Args: {} - Generated Eclipse fog05 Descriptor {}'.format(locals(), desc))
+        self.logger.debug('VIM new_network args: {} - Generated Eclipse fog05 Descriptor {}'.format(locals(), desc))
         try:
             self.fos_api.network.add_network(desc)
         except:
@@ -272,7 +272,7 @@ class vimconnector(vimconn.vimconnector):
         Returns the flavor dict details {'id':<>, 'name':<>, other vim specific }
         Raises an exception upon error or if not found
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM get_flavor with args: {}'.format(locals()))
         try:
             r = self.fos_api.flavor.get(flavor_id)
         except:
@@ -291,7 +291,7 @@ class vimconnector(vimconn.vimconnector):
                 #TODO: complete parameters for EPA
         Returns the flavor_id or raises a vimconnNotFoundException
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM get_flavor_id_from_data with args : {}'.format(locals()))
 
         try:
             flvs = self.fos_api.flavor.list()
@@ -321,7 +321,7 @@ class vimconnector(vimconn.vimconnector):
                 is_public:
                  #TODO to concrete
         Returns the flavor identifier"""
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM new_flavor with args: {}'.format(locals()))
         flv_id = '{}'.format(uuid.uuid4())
         desc = {
             'uuid':flv_id,
@@ -357,7 +357,7 @@ class vimconnector(vimconn.vimconnector):
             metadata: metadata of the image
         Returns the image id or raises an exception if failed
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM new_image with args: {}'.format(locals()))
         img_id = '{}'.format(uuid.uuid4())
         desc = {
             'name':image_dict.get('name'),
@@ -375,7 +375,7 @@ class vimconnector(vimconn.vimconnector):
         """Get the image id from image path in the VIM database.
            Returns the image_id or raises a vimconnNotFoundException
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM get_image_id_from_path with args: {}'.format(locals()))
         try:
             imgs = self.fos_api.image.list()
         except:
@@ -396,7 +396,7 @@ class vimconnector(vimconn.vimconnector):
             [{<the fields at Filter_dict plus some VIM specific>}, ...]
             List can be empty
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM get_image_list args: {}'.format(locals()))
         r = []
         try:
             fimgs = self.fos_api.image.list()
@@ -632,7 +632,7 @@ class vimconnector(vimconn.vimconnector):
 
     def get_vminstance(self,vm_id):
         """Returns the VM instance information from VIM"""
-        self.logger.debug('FOS get_vminstance with Args: {}'.format(locals()))
+        self.logger.debug('VIM get_vminstance with args: {}'.format(locals()))
 
         try:
             intsinfo = self.fos_api.fdu.instance_info(vm_id)
@@ -651,8 +651,7 @@ class vimconnector(vimconn.vimconnector):
             action_vminstance
         :return: None or the same vm_id. Raises an exception on fail
         """
-        self.logger.debug('FOS delete_vminstance')
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('FOS delete_vminstance with args: {}'.format(locals()))
         fduid =  created_items.get('fdu_id')
         try:
             self.fos_api.fdu.stop(vm_id, nid)
@@ -727,7 +726,10 @@ class vimconnector(vimconn.vimconnector):
                 r.update({vm:{'status':'DELETED'}})
                 continue
 
+
+            desc = self.fos_api.fdu.info(vm_info['fdu_uuid'])
             osm_status = fos2osm_status.get(vm_info.get('status'))
+
             self.logger.debug('FOS status info {}'.format(vm_info))
             self.logger.debug('FOS status is {} <-> OSM Status {}'.format(vm_info.get('status'), osm_status))
             info.update({'status':osm_status})
@@ -756,13 +758,21 @@ class vimconnector(vimconn.vimconnector):
                 except IndexError:
                     cp_info = None
                 if cp_info is not None:
-                    face['vim_net_id'] = cp_info.get('pair_id','')
-                    face['vim_interface_id'] = cp_info.get('uuid')
+                    cp_id = cp_info['cp_uuid']
+                    cps_d = desc['connection_points']
+                    matches = [x for x in cps_d if x['uuid'] == cp_id]
+                    if len(matches) > 0:
+                        cpd = matches[0]
+                        face['vim_net_id'] = cpd.get('pair_id','??? dafaq ???')
+                    else:
+                        face['vim_net_id'] = ''
+                    face['vim_interface_id'] = cp_id
+                    # cp_info.get('uuid')
                 else:
                     face['vim_net_id'] = ''
                     face['vim_interface_id'] = intf_name
-
-                faces.append(face)
+            i += 1
+            faces.append(face)
 
 
             info.update({'interfaces':faces})
@@ -786,7 +796,7 @@ class vimconnector(vimconn.vimconnector):
             method can modify this value
         :return: None, or a console dict
         """
-        self.logger.debug('Args: {}'.format(locals()))
+        self.logger.debug('VIM action_vminstance with args: {}'.format(locals()))
         nid = self.fdu_node_map.get(vm_id)
         if nid is None:
             raise vimconn.vimconnNotFoundException('No node for this VM')
