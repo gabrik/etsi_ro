@@ -654,8 +654,8 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('FOS delete_vminstance with args: {}'.format(locals()))
         fduid =  created_items.get('fdu_id')
         try:
-            self.fos_api.fdu.stop(vm_id, nid)
-            self.fos_api.fdu.clean(vm_id, nid)
+            # self.fos_api.fdu.stop(vm_id, nid)
+            # self.fos_api.fdu.clean(vm_id, nid)
             self.fos_api.fdu.terminate(vm_id)
             self.fos_api.fdu.offload(fduid)
         except:
