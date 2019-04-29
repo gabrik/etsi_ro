@@ -763,7 +763,7 @@ class vimconnector(vimconn.vimconnector):
                     matches = [x for x in cps_d if x['uuid'] == cp_id]
                     if len(matches) > 0:
                         cpd = matches[0]
-                        face['vim_net_id'] = cpd.get('pair_id','??? dafaq ???')
+                        face['vim_net_id'] = cpd.get('pair_id','')
                     else:
                         face['vim_net_id'] = ''
                     face['vim_interface_id'] = cp_id
@@ -771,8 +771,9 @@ class vimconnector(vimconn.vimconnector):
                 else:
                     face['vim_net_id'] = ''
                     face['vim_interface_id'] = intf_name
-            i += 1
-            faces.append(face)
+                faces.append(face)
+                i += 1
+
 
 
             info.update({'interfaces':faces})
