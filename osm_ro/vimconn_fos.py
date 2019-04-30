@@ -64,10 +64,11 @@ class vimconnector(vimconn.vimconnector):
         Returns: Raise an exception is some needed parameter is missing, but it must not do any connectivity
             check against the VIM
         """
-        self.logger.debug('vimconn_fos init with config: {}'.format(config))
+
         vimconn.vimconnector.__init__(self, uuid, name, tenant_id, tenant_name, url, url_admin, user, passwd, log_level,
                                       config, persistent_info)
 
+        self.logger.debug('vimconn_fos init with config: {}'.format(config))
         self.arch = config.get('arch', 'x86_64')
         self.hv = config.get('hypervisor', 'LXD')
         self.nodes = config.get('nodes', [])
