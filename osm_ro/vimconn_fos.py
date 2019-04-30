@@ -64,12 +64,13 @@ class vimconnector(vimconn.vimconnector):
         Returns: Raise an exception is some needed parameter is missing, but it must not do any connectivity
             check against the VIM
         """
-
+        self.logger.debug('vimconn_fos init with config: {}'.format(config))
         vimconn.vimconnector.__init__(self, uuid, name, tenant_id, tenant_name, url, url_admin, user, passwd, log_level,
                                       config, persistent_info)
 
         self.arch = config.get('arch', 'x86_64')
         self.hv = config.get('hypervisor', 'LXD')
+        self.nodes = config.get('nodes', [])
         self.fdu_node_map = {}
         self.fos_api = FIMAPI(locator=self.url)
 
@@ -126,7 +127,7 @@ class vimconnector(vimconn.vimconnector):
             'vlan': in case of a data or ptp net_type, the intended vlan tag to be used for the network
         Returns the network identifier on success or raises and exception on failure
         """
-
+        self.logger.debug('new_network: {}'.format(locals()))
         if net_type in ['data','ptp']:
             raise vimconn.vimconnNotImplemented('{} type of network not supported'.format(net_type))
 
@@ -182,6 +183,7 @@ class vimconnector(vimconn.vimconnector):
         List can be empty if no network map the filter_dict. Raise an exception only upon VIM connectivity,
             authorization, or some other unspecific error
         """
+        self.logger.debug('get_network_list: {}'.format(filter_dict))
         res = []
         try:
             nets = self.fos_api.network.list()
@@ -221,6 +223,7 @@ class vimconnector(vimconn.vimconnector):
             other VIM specific fields: (optional) whenever possible using the same naming of filter_dict param
         Raises an exception upon error or when network is not found
         """
+        self.logger.debug('get_network: {}'.format(net_id))
         res = self.get_network_list(filter_dict={'id':net_id})
         if len(res) == 0:
             raise vimconn.vimconnNotFoundException("Network {} not found at VIM".format(net_id))
@@ -230,6 +233,7 @@ class vimconnector(vimconn.vimconnector):
         """Deletes a tenant network from VIM
         Returns the network identifier or raises an exception upon error or when network is not found
         """
+        self.logger.debug('delete_network: {}'.format(net_id))
         try:
             self.fos_api.network.remove_network(net_id)
         except:
@@ -253,7 +257,7 @@ class vimconnector(vimconn.vimconnector):
                 vim_info:   #Text with plain information obtained from vim (yaml.safe_dump)
             'net_id2': ...
         """
-        self.logger.debug('Refeshing network status with ARGS: {}'.format(locals()))
+        self.logger.debug('Refeshing network status with args: {}'.format(locals()))
         r = {}
         for n in net_list:
             try:
@@ -568,9 +572,16 @@ class vimconnector(vimconn.vimconnector):
         #
 
         # UPDATING AVAILABLE INFRASTRUCTURE
+
+        if len(self.nodes) == 0:
+            nodes_id = self.fos_api.node.list()
+        else:
+            nodes_id = self.nodes
         nodes = []
-        for n in self.fos_api.node.list():
+        for n in nodes_id:
             n_info = self.fos_api.node.info(n)
+            if n_info is None:
+                continue
             n_plugs = []
             for p in self.fos_api.node.plugins(n):
                 n_plugs.append(self.fos_api.plugin.info(n,p))
