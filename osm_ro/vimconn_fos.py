@@ -32,7 +32,7 @@ Support config dict:
 
 """
 __author__="Gabriele Baldoni"
-__date__ ="$09-apr-2019 10:35:12$"
+__date__ ="$13-may-2019 10:35:12$"
 
 import uuid
 import socket
@@ -42,6 +42,7 @@ import random
 import yaml
 from functools import partial
 from fog05rest import FIMAPI
+from fog05rest import fimerrors
 
 
 class vimconnector(vimconn.vimconnector):
@@ -104,9 +105,10 @@ class vimconnector(vimconn.vimconnector):
         try:
             self.fos_api.check()
             return None
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
-        #raise vimconnNotImplemented( "Should have implemented this" )
+        except fimerrors.FIMAuthExcetpion as fae:
+            raise vimconn.vimconnAuthException("Unable to authenticate to the VIM. Error {}".format(fae))
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
 
     def new_network(self, net_name, net_type, ip_profile=None, shared=False, vlan=None):
         """Adds a tenant network to VIM
@@ -158,8 +160,10 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('VIM new_network args: {} - Generated Eclipse fog05 Descriptor {}'.format(locals(), desc))
         try:
             self.fos_api.network.add_network(desc)
-        except:
-            raise vimconn.vimconnException("Unable to create network {}, VIM Error".format(net_name))
+        except fimerrors.FIMAResouceExistingException as free:
+            raise vimconn.vimconnConflictException("Network already exists at VIM. Error {}".format(free))
+        except Exception as e:
+            raise vimconn.vimconnException("Unable to create network {}. Error {}".format(net_name, e))
             # No way from the current rest service to get the actual error, most likely it will be an already existing error
         return net_uuid
 
@@ -188,8 +192,8 @@ class vimconnector(vimconn.vimconnector):
         res = []
         try:
             nets = self.fos_api.network.list()
-        except:
-            raise vimconn.vimconnConnectionException("Cannot get network list from VIM, connection error")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("Cannot get network list from VIM, connection error. Error {}".format(e))
 
         filters = [
             partial(self.__name_filter, filter_name=filter_dict.get('name')),
@@ -237,8 +241,10 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('delete_network: {}'.format(net_id))
         try:
             self.fos_api.network.remove_network(net_id)
-        except:
-            raise vimconn.vimconnException("Cannot delete network {} from VIM, generic error at VIM".format(net_id))
+        except fimerrors.FIMNotFoundException as fnfe:
+            raise vimconn.vimconnNotFoundException("Network {} not found at VIM (already deleted?). Error {}".format(net_id, fnfe))
+        except Exception as e:
+            raise vimconn.vimconnException("Cannot delete network {} from VIM. Error {}".format(net_id, e))
         return net_id
 
     def refresh_nets_status(self, net_list):
@@ -280,8 +286,8 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('VIM get_flavor with args: {}'.format(locals()))
         try:
             r = self.fos_api.flavor.get(flavor_id)
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         if r is None:
             raise vimconn.vimconnNotFoundException("Flavor not found at VIM")
         return {'id':r.get('uuid'), 'name':r.get('name'), 'fos':r}
@@ -300,8 +306,8 @@ class vimconnector(vimconn.vimconnector):
 
         try:
             flvs = self.fos_api.flavor.list()
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         r = [x.get('uuid') for x in flvs if (x.get('cpu_min_count') == flavor_dict.get('vcpus') and x.get('ram_size_mb') == flavor_dict.get('ram') and x.get('storage_size_gb') == flavor_dict.get('disk'))]
         if len(r) == 0:
             raise vimconn.vimconnNotFoundException ( "No flavor found" )
@@ -339,8 +345,10 @@ class vimconnector(vimconn.vimconnector):
         }
         try:
             self.fos_api.flavor.add(desc)
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except fimerrors.FIMAResouceExistingException as free:
+            raise vimconn.vimconnConflictException("Flavor {} already exist at VIM. Error {}".format(flv_id, free))
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         return flv_id
 
 
@@ -349,8 +357,10 @@ class vimconnector(vimconn.vimconnector):
         Returns the used id or raise an exception"""
         try:
             self.fos_api.flavor.remove(flavor_id)
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except fimerrors.FIMNotFoundException as fnfe:
+            raise vimconn.vimconnNotFoundException("Flavor {} not found at VIM (already deleted?). Error {}".format(flavor_id, fnfe))
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         return flavor_id
 
     def new_image(self, image_dict):
@@ -371,8 +381,10 @@ class vimconnector(vimconn.vimconnector):
         }
         try:
             self.fos_api.image.add(desc)
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except fimerrors.FIMAResouceExistingException as free:
+            raise vimconn.vimconnConflictException("Image {} already exist at VIM. Error {}".format(img_id, free))
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         return img_id
 
     def get_image_id_from_path(self, path):
@@ -383,8 +395,8 @@ class vimconnector(vimconn.vimconnector):
         self.logger.debug('VIM get_image_id_from_path with args: {}'.format(locals()))
         try:
             imgs = self.fos_api.image.list()
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         res = [x.get('uuid') for x in imgs if x.get('uri')==path]
         if len(res) == 0:
             raise vimconn.vimconnNotFoundException("Image with this path was not found")
@@ -405,8 +417,8 @@ class vimconnector(vimconn.vimconnector):
         r = []
         try:
             fimgs = self.fos_api.image.list()
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
 
         filters = [
             partial(self.__name_filter, filter_name=filter_dict.get('name')),
@@ -638,8 +650,10 @@ class vimconnector(vimconn.vimconnector):
             self.fdu_node_map.update({instanceid: selected_node.get('uuid')})
             self.logger.debug('new_vminstance return: {}'.format((fdu_uuid, created_items)))
             return (instanceid, created_items)
-        except:
-            raise vimconn.vimconnException("Error while instantiating VM {}".format(name))
+        except fimerrors.FIMAResouceExistingException as free:
+            raise vimconn.vimconnConflictException("VM already exists at VIM. Error {}".format(free))
+        except Exception as e:
+            raise vimconn.vimconnException("Error while instantiating VM {}. Error {}".format(name, e))
 
 
     def get_vminstance(self,vm_id):
@@ -648,8 +662,8 @@ class vimconnector(vimconn.vimconnector):
 
         try:
             intsinfo = self.fos_api.fdu.instance_info(vm_id)
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
         if intsinfo is None:
             raise vimconn.vimconnNotFoundException('VM with id {} not found!'.format(vm_id))
         return intsinfo
@@ -668,8 +682,8 @@ class vimconnector(vimconn.vimconnector):
         try:
             self.fos_api.fdu.terminate(vm_id)
             self.fos_api.fdu.offload(fduid)
-        except:
-            raise vimconn.vimconnException("Error on deletting VM with id {}".format(vm_id))
+        except Exception as e:
+            raise vimconn.vimconnException("Error on deletting VM with id {}. Error {}".format(vm_id,e))
         return vm_id
 
         #raise vimconnNotImplemented( "Should have implemented this" )
@@ -861,5 +875,5 @@ class vimconnector(vimconn.vimconnector):
                     self.fos_api.fdu.start(vm_id)
                 else:
                     raise vimconn.vimconnConflictException("Cannot reboot from this state")
-        except:
-            raise vimconn.vimconnConnectionException("VIM not reachable")
+        except Exception as e:
+            raise vimconn.vimconnConnectionException("VIM not reachable. Error {}".format(e))
