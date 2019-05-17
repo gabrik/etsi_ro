@@ -73,6 +73,7 @@ class vimconnector(vimconn.vimconnector):
         self.arch = config.get('arch', 'x86_64')
         self.hv = config.get('hypervisor', 'LXD')
         self.nodes = config.get('nodes', [])
+        self.mgmt_net = config.get('mgmt_net', None)
         self.fdu_node_map = {}
         self.fos_api = FIMAPI(locator=self.url)
 
@@ -535,6 +536,29 @@ class vimconnector(vimconn.vimconnector):
         nets = []
         cps = []
         intf_id = 0
+        # connection to mgmt network
+        if self.mgmt_net is not None:
+            cp_id = '{}'.format(uuid.uuid4())
+            pair_id = self.mgmt_net
+
+            cp_d = {
+                'uuid':cp_id,
+                'pair_id':pair_id
+            }
+            intf_d = {
+                'name':'fosmgmt0',
+                'is_mgmt':True,
+                'if_type':'INTERNAL',
+                'virtual_interface':{
+                    'intf_type':'VIRTIO',
+                    'vpci':'0:0:0',
+                    'bandwidth':100
+                }
+            }
+            created_items['connection_points'].append(cp_id)
+            fdu_desc['connection_points'].append(cp_d)
+            fdu_desc['interfaces'].append(intf_d)
+
         for n in net_list:
             cp_id = '{}'.format(uuid.uuid4())
             n.update({'vim_id':cp_id})
@@ -562,6 +586,8 @@ class vimconnector(vimconn.vimconnector):
             fdu_desc['interfaces'].append(intf_d)
 
             intf_id = intf_id + 1
+
+
 
         if cloud_config is not None:
             configuration = {
