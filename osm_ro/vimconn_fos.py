@@ -538,56 +538,8 @@ class vimconnector(vimconn.vimconnector):
 
         nets = []
         cps = []
+
         intf_id = 0
-        # connection to mgmt network
-        if self.mgmt_net is not None:
-            cp_id = '{}'.format(uuid.uuid4())
-            pair_id = self.mgmt_net
-
-            cp_d = {
-                'uuid':cp_id,
-                'pair_id':pair_id
-            }
-            intf_d = {
-                'name':'eth{}'.format(intf_id),
-                'is_mgmt':True,
-                'if_type':'INTERNAL',
-                'cp_id': cp_id,
-                'virtual_interface':{
-                    'intf_type':'VIRTIO',
-                    'vpci':'0:0:0',
-                    'bandwidth':100
-                }
-            }
-            created_items['connection_points'].append(cp_id)
-            fdu_desc['connection_points'].append(cp_d)
-            fdu_desc['interfaces'].append(intf_d)
-            intf_id = intf_id + 1
-
-        if self.mec_net is not None:
-            cp_id = '{}'.format(uuid.uuid4())
-            pair_id = self.mec_net
-
-            cp_d = {
-                'uuid':cp_id,
-                'pair_id':pair_id
-            }
-            intf_d = {
-                'name':'eth{}'.format(intf_id),
-                'is_mgmt':False,
-                'if_type':'INTERNAL',
-                'cp_id': cp_id,
-                'virtual_interface':{
-                    'intf_type':'VIRTIO',
-                    'vpci':'0:0:0',
-                    'bandwidth':100
-                }
-            }
-            created_items['connection_points'].append(cp_id)
-            fdu_desc['connection_points'].append(cp_d)
-            fdu_desc['interfaces'].append(intf_d)
-            intf_id = intf_id + 1
-
         for n in net_list:
             cp_id = '{}'.format(uuid.uuid4())
             n.update({'vim_id':cp_id})
@@ -615,6 +567,56 @@ class vimconnector(vimconn.vimconnector):
             fdu_desc['connection_points'].append(cp_d)
             fdu_desc['interfaces'].append(intf_d)
 
+            intf_id = intf_id + 1
+
+        # connection to mgmt network
+        if self.mgmt_net is not None:
+            cp_id = '{}'.format(uuid.uuid4())
+            pair_id = self.mgmt_net
+
+            cp_d = {
+                'uuid':cp_id,
+                'pair_id':pair_id
+            }
+            intf_d = {
+                'name':'eth{}'.format(intf_id),
+                'is_mgmt':True,
+                'if_type':'INTERNAL',
+                'cp_id': cp_id,
+                'virtual_interface':{
+                    'intf_type':'VIRTIO',
+                    'vpci':'0:0:0',
+                    'bandwidth':100
+                }
+            }
+            created_items['connection_points'].append(cp_id)
+            fdu_desc['connection_points'].append(cp_d)
+            fdu_desc['interfaces'].append(intf_d)
+            intf_id = intf_id + 1
+
+        # connection to MEC network
+        if self.mec_net is not None:
+            cp_id = '{}'.format(uuid.uuid4())
+            pair_id = self.mec_net
+
+            cp_d = {
+                'uuid':cp_id,
+                'pair_id':pair_id
+            }
+            intf_d = {
+                'name':'eth{}'.format(intf_id),
+                'is_mgmt':False,
+                'if_type':'INTERNAL',
+                'cp_id': cp_id,
+                'virtual_interface':{
+                    'intf_type':'VIRTIO',
+                    'vpci':'0:0:0',
+                    'bandwidth':100
+                }
+            }
+            created_items['connection_points'].append(cp_id)
+            fdu_desc['connection_points'].append(cp_d)
+            fdu_desc['interfaces'].append(intf_d)
             intf_id = intf_id + 1
 
 
@@ -659,7 +661,7 @@ class vimconnector(vimconn.vimconnector):
             n_cpu_arch = n_info.get('cpu')[0].get('arch')
             n_cpu_freq = n_info.get('cpu')[0].get('frequency')
             n_ram = n_info.get('ram').get('size')
-            n_disk_size = sorted(list(filter(lambda x: 'sda' in x['local_address'], n_info.get('disks'))), key= lambda k: k['dimension'])[-1].get('dimension')
+            n_disk_size = sorted(list(filter(lambda x: 'sda' in x['local_address'] or 'vda' in x['local_address'], n_info.get('disks'))), key= lambda k: k['dimension'])[-1].get('dimension')
 
             hvs = []
             for p in n_plugs:
