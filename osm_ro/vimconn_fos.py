@@ -29,6 +29,8 @@ Support config dict:
                 can be one of: LXD, KVM, BARE, XEN, DOCKER, MCU
                 the selected VIM need to have at least a node with support
                 for the selected hypervisor
+    - mgmt_net : uuid for the managment network to be connected to devices
+    - vlan_rage : range of segmentation id that can be used by the VIM
 
 """
 __author__="Gabriele Baldoni"
@@ -549,6 +551,7 @@ class vimconnector(vimconn.vimconnector):
                 'name':'fosmgmt0',
                 'is_mgmt':True,
                 'if_type':'INTERNAL',
+                'cp_id': cp_id,
                 'virtual_interface':{
                     'intf_type':'VIRTIO',
                     'vpci':'0:0:0',
@@ -572,6 +575,7 @@ class vimconnector(vimconn.vimconnector):
                 'name':n.get('name','eth{}'.format(intf_id)),
                 'is_mgmt':False,
                 'if_type':'INTERNAL',
+                'cp_id': cp_id,
                 'virtual_interface':{
                     'intf_type':n.get('model','VIRTIO'),
                     'vpci':n.get('vpci','0:0:0'),
@@ -894,7 +898,7 @@ class vimconnector(vimconn.vimconnector):
                 else:
                     raise vimconn.vimconnConflictException("Cannot terminate from this state")
             elif "rebuild" in action_dict:
-                raise vimconnNotImplemented("Rebuild not implememnted")
+                raise vimconn.vimconnNotImplemented("Rebuild not implememnted")
             elif "reboot" in action_dict:
                 if fdu_info.get('status') == 'RUN':
                     self.fos_api.fdu.stop(vm_id)
