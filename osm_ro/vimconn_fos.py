@@ -548,7 +548,7 @@ class vimconnector(vimconn.vimconnector):
                 'pair_id':pair_id
             }
             intf_d = {
-                'name':'fosmgmt0',
+                'name':'eth{}'.format(intf_id),
                 'is_mgmt':True,
                 'if_type':'INTERNAL',
                 'cp_id': cp_id,
@@ -561,6 +561,7 @@ class vimconnector(vimconn.vimconnector):
             created_items['connection_points'].append(cp_id)
             fdu_desc['connection_points'].append(cp_d)
             fdu_desc['interfaces'].append(intf_d)
+            intf_id = intf_id + 1
 
         for n in net_list:
             cp_id = '{}'.format(uuid.uuid4())
