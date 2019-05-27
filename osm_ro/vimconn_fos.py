@@ -76,6 +76,7 @@ class vimconnector(vimconn.vimconnector):
         self.hv = config.get('hypervisor', 'LXD')
         self.nodes = config.get('nodes', [])
         self.mgmt_net = config.get('mgmt_net', None)
+        self.mec_net = config.get('mec_net', None)
         self.fdu_node_map = {}
         self.fos_api = FIMAPI(locator=self.url)
 
@@ -550,6 +551,30 @@ class vimconnector(vimconn.vimconnector):
             intf_d = {
                 'name':'eth{}'.format(intf_id),
                 'is_mgmt':True,
+                'if_type':'INTERNAL',
+                'cp_id': cp_id,
+                'virtual_interface':{
+                    'intf_type':'VIRTIO',
+                    'vpci':'0:0:0',
+                    'bandwidth':100
+                }
+            }
+            created_items['connection_points'].append(cp_id)
+            fdu_desc['connection_points'].append(cp_d)
+            fdu_desc['interfaces'].append(intf_d)
+            intf_id = intf_id + 1
+
+        if self.mec_net is not None:
+            cp_id = '{}'.format(uuid.uuid4())
+            pair_id = self.mec_net
+
+            cp_d = {
+                'uuid':cp_id,
+                'pair_id':pair_id
+            }
+            intf_d = {
+                'name':'eth{}'.format(intf_id),
+                'is_mgmt':False,
                 'if_type':'INTERNAL',
                 'cp_id': cp_id,
                 'virtual_interface':{
